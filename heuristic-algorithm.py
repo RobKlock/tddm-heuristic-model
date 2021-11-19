@@ -122,29 +122,31 @@ def piecewise_linear(v, bias):
     else:
         return 1
 
-def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, v0=1, z=.99, bias=1, tau=1, noise=0.002, dt=.2):
+def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value, v0=1, z=.99, bias=1, tau=1, noise=0.002, dt=.2):
     v = 0
     v_hist = [0]    
     activation_plot_xvals = np.arange(start_time, end_time, dt) 
     etr = False
     net_in=0
     for i in frange (start_time, end_time, dt):
-        net_in = timer_weight * v0 + (net_in * timer_weight)
+        net_in = timer_weight * v0 + (net_in)
         net_in = piecewise_linear(net_in, bias)
         dv = (1/tau) * ((-v + net_in) * dt) + (noise * np.sqrt(dt) * np.random.normal(0, 1, 1))  # Add noise using np.random
         v = v + dv
-        if v >= z:
+        v_hist.append(v[0])
+        # if i == start_time + z/timer_weight:
+        if i >= start_time + (1/timer_weight):
             etr = True
         if etr:
              drift = (timer_weight - 1 + .5) 
              d_A = (- (drift ** 2)/z) * dt
              timer_weight = timer_weight + d_A  
         
-        v_hist.append(v[0])
-        plt.plot(i, v,  marker='.', c = colors[event_type], alpha=0.2) 
-        plt.ylim([0,1.5])
-        plt.xlim([start_time,end_time])
-        plt.pause(0.000001)
+             #plt.plot(i, timer_weight,  marker='.', c = colors[event_type], alpha=0.2) 
+             plt.plot([start_time, i], [0, 1], c=colors[event_type], alpha=0.1)
+             plt.ylim([0,1.5])
+             plt.xlim([start_time,end_time])
+             plt.pause(0.0000001)
      
     #plt.plot(activation_plot_xvals, v_hist[0:-1], color=colors[event_type], dashes = [2,2]) 
 
@@ -152,10 +154,15 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
     for idx, value in zip(timer_indices, timer_values):
         if value > 1:
             ''' Early Update Rule '''
-            plot_early_update_rule(start_time, end_time, timer.timerWeight(), T, event_type)
-
+            #lot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
             timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+            plt.grid('on')
+
+            
+            plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                    
             timer.setTimerWeight(timer_weight, idx)
+            
         else:
             ''' Late Update Rule '''
             timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
@@ -163,7 +170,7 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
         
 dt = 0.1
 N_EVENT_TYPES=2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=4 # Total amount of events across all types
+NUM_EVENTS=4# Total amount of events across all types
 Y_LIM=2 # Plotting limit
 NOISE=0.002 # Internal noise - timer activation
 LEARNING_RATE=.9
@@ -189,8 +196,6 @@ T = events_with_type[-1][0] + 100
 
 # Timer with 20 ramps, all initialized to be very highly weighted
 timer=TM(1,20)
-
-# TODO: Make the initial weight update continuous so we can see the process better
 
 plt.figure()
 
@@ -247,9 +252,9 @@ for idx, event in enumerate(events_with_type):
             plt.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
     
     # plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
-    update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type)    
+    update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, True)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)
-
+     
     plt.vlines(event, 0,Y_LIM, label="v", color=colors[event_type], alpha=0.5)
     if Y_LIM>1:
         plt.hlines(1, 0, T, alpha=0.2, color='black')

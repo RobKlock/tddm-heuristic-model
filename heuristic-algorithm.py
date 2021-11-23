@@ -135,7 +135,7 @@ def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, va
         v = v + dv
         v_hist.append(v[0])
         # if i == start_time + z/timer_weight:
-        if i >= start_time + (1/timer_weight):
+        if (i >= start_time + (1/timer_weight)) or (i == 1):
             etr = True
         if etr:
              drift = (timer_weight - 1 + .5) 
@@ -223,7 +223,7 @@ for idx, event in enumerate(events_with_type):
     prev_event = 0
 
     if first_event:
-        first_event= False                   
+        first_event=False                   
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
         # TODO: set up response times correctly. for now its the first of the timers
         # TODO: set up response time with noise. centered at event time, deviation proportional to noise and interval

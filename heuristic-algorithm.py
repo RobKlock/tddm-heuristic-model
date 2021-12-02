@@ -85,8 +85,11 @@ def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
     return act
     
 
-def responseTime(weight, threshold):
-    return threshold/weight
+def responseTime(weight, threshold, noise):
+    #print(invgauss.rvs(interval_end, 1))
+    shape = (threshold/noise)**2
+    return invgauss.rvs(threshold/weight, shape)
+   # return threshold/weight
 
 def reward(activation, margin=.025):
     # Squared duration of error from event
@@ -121,8 +124,11 @@ def piecewise_linear(v, bias):
         return ((v - (bias) + .5))
     else:
         return 1
+    
 
 def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value, v0=1, z=.99, bias=1, tau=1, noise=0.002, dt=.2):
+    # Alternatively - save every frame of this into a folder and render a movie after the fact. Automate this in Python
+    # Eliminate the previous ramp so all we see is a single falling ramp
     v = 0
     v_hist = [0]    
     activation_plot_xvals = np.arange(start_time, end_time, dt) 
@@ -143,6 +149,7 @@ def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, va
              timer_weight = timer_weight + d_A  
         
              #plt.plot(i, timer_weight,  marker='.', c = colors[event_type], alpha=0.2) 
+             # Delete old element
              plt.plot([start_time, i], [0, 1], c=colors[event_type], alpha=0.1)
              plt.ylim([0,1.5])
              plt.xlim([start_time,end_time])
@@ -150,7 +157,49 @@ def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, va
      
     #plt.plot(activation_plot_xvals, v_hist[0:-1], color=colors[event_type], dashes = [2,2]) 
 
-def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1):
+def plot_hitting_times(weight,threshold,noise):
+    print("weight: ", weight)
+    print("threshold: ", threshold)
+    print("noise: ", noise)
+    print("mu: ", mu)
+
+    mu = threshold/weight
+    lmbda = (threshold/noise)**2
+    
+    r = invgauss.rvs(mu/lmbda, scale=lmbda, size=1000)
+    plt.hist(r, density=True, histtype='stepfilled', alpha=0.2, bins = 200)
+
+    plt.legend(loc='best', frameon=False)
+
+    plt.show()
+    
+def compare_random_walk(weight, threshold, noise, dt):
+    plt.subplot(211)
+    ax1 = plt.subplot(211)
+    ax2 = plt.subplot(212)
+    
+    mu = threshold/weight
+    lmbda = (threshold/noise)**2
+    
+    r = invgauss.rvs(mu/lmbda, scale=lmbda, size=1000)
+    ax1.hist(r, density=True, histtype='stepfilled', alpha=0.2, bins = 200)
+
+    ax1.legend(loc='best', frameon=False)
+    
+    ht = list(map(lambda idx: generate_hit_time(weight, threshold, noise, 0.05), range(1000)))
+    ax2.hist(ht, density=True, histtype='stepfilled', alpha=0.2, bins = 200)
+    ax2.legend(loc='best', frameon=False)
+    plt.show()
+
+def generate_hit_time(weight, threshold, noise, dt):
+    arr = np.random.normal(0,1,int(((threshold/weight)+5)/dt)) * np.sqrt(dt) * noise
+    for i in range (1, arr.shape[0]):
+        arr[i] = arr[i-1] + (weight * dt) + (np.random.normal(0, 1, 1) * noise * np.sqrt(dt)) 
+    
+    hit_time = np.argmax(arr>threshold) * dt
+    return hit_time
+    
+def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
     for idx, value in zip(timer_indices, timer_values):
         if value > 1:
             ''' Early Update Rule '''
@@ -158,8 +207,8 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
             plt.grid('on')
 
-            
-            plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+            if plot:
+                plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
                     
             timer.setTimerWeight(timer_weight, idx)
             
@@ -228,7 +277,7 @@ for idx, event in enumerate(events_with_type):
         # TODO: set up response times correctly. for now its the first of the timers
         # TODO: set up response time with noise. centered at event time, deviation proportional to noise and interval
     
-        response_time = responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD)
+        response_time = responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE)
 
         # TODO: set up scores
         # Do we want to score the first event which we know is bad?
@@ -241,7 +290,7 @@ for idx, event in enumerate(events_with_type):
     else:
         prev_event = events_with_type[idx-1][0]
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
-        response_time = prev_event + responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD)
+        response_time = prev_event + responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE)
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         learning_rate = timer.learningRate(event_timer_index[0])
         new_learning_rate = 1 - math.exp(-0.1 * timer.getScore(event_timer_index[0]))
@@ -250,9 +299,9 @@ for idx, event in enumerate(events_with_type):
         for i in timer_value:
             plt.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)
             plt.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
-    
+            plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
     # plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
-    update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, True)    
+    update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)
      
     plt.vlines(event, 0,Y_LIM, label="v", color=colors[event_type], alpha=0.5)

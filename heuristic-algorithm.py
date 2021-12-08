@@ -176,28 +176,28 @@ def plot_hitting_times(weight,threshold,noise):
 def compare_random_walk(weight, threshold, noise, dt):
     plt.subplot(211)
     ax1 = plt.subplot(211)
-    ax2 = plt.subplot(212)
+    ax2 = plt.subplot(212, sharex=ax1)
     
     mu = threshold/weight
     lmbda = (threshold/noise)**2
-    
+    plt.suptitle("mu = {mu}, noise = {noise}, n = 1000".format(mu=mu, noise=noise))
     r = invgauss.rvs(mu/lmbda, scale=lmbda, size=1000)
-    ax1.hist(r, density=True, histtype='stepfilled', alpha=0.2, bins = 200)
-
-    ax1.legend(loc='best', frameon=False)
-    
-    ht = list(map(lambda idx: generate_hit_time(weight, threshold, noise, 0.05), range(1000)))
-    ax2.hist(ht, density=True, histtype='stepfilled', alpha=0.2, bins = 200)
-    ax2.legend(loc='best', frameon=False)
+    ax1.hist(r, density=True, histtype='stepfilled', alpha=0.5, bins = 200)
+    ax1.set_title("Inverse Gaussian Variates")
+        
+    ht = list(map(lambda idx: generate_hit_time(weight, threshold, noise, 0.01), range(1000)))
+    ax2.hist(ht, density=True, histtype='stepfilled', alpha=0.5, bins = 200)
+    ax2.set_title("Simulated Hitting Times")
     plt.show()
 
 def generate_hit_time(weight, threshold, noise, dt):
-    arr = np.random.normal(0,1,int(((threshold/weight)+5)/dt)) * np.sqrt(dt) * noise
+    arr = np.random.normal(0,1,int(((threshold/weight)+50)/dt)) * noise * np.sqrt(dt)
     for i in range (1, arr.shape[0]):
         arr[i] = arr[i-1] + (weight * dt) + (np.random.normal(0, 1, 1) * noise * np.sqrt(dt)) 
     
     hit_time = np.argmax(arr>threshold) * dt
-    return hit_time
+    if hit_time > 0:    
+        return hit_time
     
 def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
     for idx, value in zip(timer_indices, timer_values):

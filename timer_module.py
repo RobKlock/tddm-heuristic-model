@@ -233,8 +233,8 @@ class TimerModule:
             
         # Establish our distributions
         for i in range (0, num_dists):
-            locs.append(np.random.randint(20,50))
-            scales.append(math.sqrt(np.random.randint(1, 10)))
+            locs.append(np.random.randint(50,100))
+            scales.append(math.sqrt(np.random.randint(20, 100)))
        
         # Roll a dice N times
         samples = [] #np.zeros(num_samples)

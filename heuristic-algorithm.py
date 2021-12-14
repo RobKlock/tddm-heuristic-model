@@ -193,26 +193,29 @@ def compare_random_walk(weight, threshold, noise, dt):
     ax2.set_title("Simulated Hitting Times")
     plt.show()
     
-# can use this 
-def generate_hit_time(weight, threshold, noise, dt):
-    #np.cumsum 
+
+def generate_hit_time(weight, threshold, noise, dt, plot=False):   
+    T = int(((threshold/weight)+50)/dt)
+    arr = np.random.normal(0,1,T) * noise * np.sqrt(dt)
     
-    arr = np.random.normal(0,1,int(((threshold/weight)+50)/dt)) * noise * np.sqrt(dt)
-    drift_arr = np.ones(int(((threshold/weight)+50)/dt)) * weight * dt 
-    np.cumsum(arr+drift_arr)
-    # for i in range (1, arr.shape[0]):
-    #     arr[i] = arr[i-1] + (weight * dt) + (np.random.normal(0, 1, 1) * noise * np.sqrt(dt)) 
+    drift_arr = np.ones(T) * weight * dt
+    act_arr = drift_arr + arr
+    cum_act_arr = np.cumsum(act_arr)
+    print(len(cum_act_arr))
+   
+    hit_time = np.argmax(cum_act_arr>threshold) * dt
+    x = np.arange(0, T*dt, dt)
     
-    hit_time = np.argmax(arr>threshold) * dt
+    if plot:
+       plt.figure()
+       plt.hlines(threshold,0,T)
+       plt.plot(x, cum_act_arr, color="grey")
+       plt.xlim([0,hit_time + (hit_time//2)])
+       plt.ylim([0, threshold + (threshold/2)])
     if hit_time > 0:    
         return hit_time
 
-# def generate_hit_time_2(event_time):
-    # for any single process/ramp
-    # generate a normal distribution centered at event_time * drift with variance = noise (could be noise squared, need to find the proportion) * (event_time)
-    # for each ramp, pull a sample from its distribution
-    # if its above threshold, we know it hit early
-    # if its below threshold
+
     
 def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
     for idx, value in zip(timer_indices, timer_values):
@@ -234,7 +237,7 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
         
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=50# Total amount of events across all types
+NUM_EVENTS=5# Total amount of events across all types
 Y_LIM=2 # Plotting limit
 NOISE=0.002 # Internal noise - timer activation
 LEARNING_RATE=.9

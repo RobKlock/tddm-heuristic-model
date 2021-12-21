@@ -104,12 +104,12 @@ def score_decay(response_time, event_time):
     #print("event time: ", event_time)
     diff = event_time - response_time
     #print(f'diff: {diff}')
-    if diff <= 0:
+    if diff < 0:
         return 0  
     else:
         #return 0.02**(1.0-diff)
         #print("diff: ", diff)
-        return 2**(-diff/5)
+        return 1.2**(-diff)
     
 def frange(start, stop, step):
      i = start
@@ -135,7 +135,7 @@ def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, va
     etr = False
     net_in=0
     for i in frange (start_time, end_time, dt):
-        net_in = timer_weight * v0 + (net_in)
+        net_in = timer_weight * v0 # + (net_in)
         net_in = piecewise_linear(net_in, bias)
         dv = (1/tau) * ((-v + net_in) * dt) + (noise * np.sqrt(dt) * np.random.normal(0, 1, 1))  # Add noise using np.random
         v = v + dv
@@ -201,17 +201,18 @@ def generate_hit_time(weight, threshold, noise, dt, plot=False):
     drift_arr = np.ones(T) * weight * dt
     act_arr = drift_arr + arr
     cum_act_arr = np.cumsum(act_arr)
-    print(len(cum_act_arr))
    
     hit_time = np.argmax(cum_act_arr>threshold) * dt
     x = np.arange(0, T*dt, dt)
     
+    # plot many trajectories over each other
     if plot:
        plt.figure()
        plt.hlines(threshold,0,T)
        plt.plot(x, cum_act_arr, color="grey")
        plt.xlim([0,hit_time + (hit_time//2)])
        plt.ylim([0, threshold + (threshold/2)])
+       
     if hit_time > 0:    
         return hit_time
 
@@ -237,20 +238,22 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
         
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=5# Total amount of events across all types
+NUM_EVENTS=10# Total amount of events across all types
 Y_LIM=2 # Plotting limit
 NOISE=0.002 # Internal noise - timer activation
 LEARNING_RATE=.9
 STANDARD_INTERVAL=20
-RESPONSE_THRESHOLD=0.99
+RESPONSE_THRESHOLD=1
 ALPHA = 0.8
 colors = ['b', 'g', 'r', 'c', 'm', 'y']
 ANIMATE_FIRST_EARLY_RULE = True
+MAX_SCORE = NUM_EVENTS
+#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
+#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, num_exp = 1, standard_interval = 20)
+events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20)
 
-#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = 3, num_exp = 1)
-events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, num_exp = 1, standard_interval = 20)
 event_occurances = (list(zip(*events_with_type))[0])
-#plt.hist(event_occurances, bins=80, color='black')
+plt.hist(event_occurances, bins=80, color='black')
 
 events = np.zeros(NUM_EVENTS)
 events_with_type[0][0] = event_occurances[0]
@@ -293,23 +296,29 @@ for idx, event in enumerate(events_with_type):
         first_event=False                   
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
-        # TODO: set up response times correctly. for now its the first of the timers
-        # TODO: set up response time with noise. centered at event time, deviation proportional to noise and interval
-    
         
-        response_time = responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE)
+        response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
 
-        # TODO: set up scores
+        
+        # plot multiple trajectories
+        
+        # threshold for reallocation is what?
+        # some threshold of max score possible
+        
+        # variable for each ramp about if its falling or not and the event that triggered it
+        # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
+        
         # Do we want to score the first event which we know is bad?
-        #timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+        timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         
         for i in timer_value:
             plt.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.5)
-            plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-        
+            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+            plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
+
         for i in free_timers_vals:
             plt.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-            plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
 
     else:
         prev_event = events_with_type[idx-1][0]
@@ -317,7 +326,7 @@ for idx, event in enumerate(events_with_type):
         
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
 
-        response_time = prev_event + responseTime(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE)
+        response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         learning_rate = timer.learningRate(event_timer_index[0])
         new_learning_rate = 1 - math.exp(-0.1 * timer.getScore(event_timer_index[0]))
@@ -330,7 +339,7 @@ for idx, event in enumerate(events_with_type):
         
         for i in free_timers_vals:
            plt.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-           plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+           #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
     
     # plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
     update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    

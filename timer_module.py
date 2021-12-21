@@ -91,6 +91,7 @@ class TimerModule:
         self.timers=np.empty(n_timers)
         self.timers.fill(timer_weight)
         self.timer_weight=timer_weight
+        self.frozen_ramps=np.zeros(n_timers)
         self.scores=np.zeros(n_timers)
         self.learning_rates=np.ones(n_timers)
         block = np.array([[2, 0, 0, -.4],
@@ -116,6 +117,15 @@ class TimerModule:
         
     def eventDict(self):
         return self.event_dict
+    
+    def ramps(self):
+        return self.timers
+    
+    def frozen_ramps(self):
+        return self.frozen_ramps
+    
+    def frozen_ramps(self):
+        return self.frozen_ramps
     
     def timerWeight(self, index=0):
         return self.timers[index]

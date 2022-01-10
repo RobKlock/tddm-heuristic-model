@@ -62,7 +62,7 @@ Initializing Timers:
     
     First, choose a family
     
-    Need to define and assign distribution families
+    Need to define and assitytggn distribution families
     
     
     Dont want to record everything or else youll just overfit
@@ -77,7 +77,7 @@ Initializing Timers:
         As soon as a stimulus occurs, I start multiple potential timers. When the event occurs,
         I store information about which ramp was closest. Or you could allocate 5 timers for each event
         and adjust their fan to represent the event's standard deviation
-    
+        
     Rivest will write down a basic rule to use
     Events A and B and their independent to get started
     
@@ -91,7 +91,11 @@ class TimerModule:
         self.timers=np.empty(n_timers)
         self.timers.fill(timer_weight)
         self.timer_weight=timer_weight
-        self.frozen_ramps=np.zeros(n_timers)
+        self.active_ramps=[]
+        # a list of indices
+        self.frozen_ramps=[]
+        self.time_until=np.empty(n_timers)
+        self.time_until.fill(-1)
         self.scores=np.zeros(n_timers)
         self.learning_rates=np.ones(n_timers)
         block = np.array([[2, 0, 0, -.4],

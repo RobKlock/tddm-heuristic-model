@@ -151,6 +151,7 @@ def plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, va
              #plt.plot(i, timer_weight,  marker='.', c = colors[event_type], alpha=0.2) 
              # Delete old element
              plt.plot([start_time, i], [0, 1], c=colors[event_type], alpha=0.1)
+    
              plt.ylim([0,1.5])
              plt.xlim([start_time,end_time])
              plt.pause(0.0000001)
@@ -220,6 +221,9 @@ def generate_hit_time(weight, threshold, noise, dt, plot=False):
     
 def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
     for idx, value in zip(timer_indices, timer_values):
+        if idx in timer.frozen_ramps:
+            continue
+        
         if value > 1:
             ''' Early Update Rule '''
             #lot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
@@ -237,41 +241,45 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             timer.setTimerWeight(timer_weight, idx)
         
 dt = 0.1
-N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=10# Total amount of events across all types
-Y_LIM=2 # Plotting limit
-NOISE=0.002 # Internal noise - timer activation
-LEARNING_RATE=.9
-STANDARD_INTERVAL=20
-RESPONSE_THRESHOLD=1
-ALPHA = 0.8
-colors = ['b', 'g', 'r', 'c', 'm', 'y']
-ANIMATE_FIRST_EARLY_RULE = True
-MAX_SCORE = NUM_EVENTS
-#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, num_exp = 1, standard_interval = 20)
-events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20)
+N_EVENT_TYPES= 4 # Number of event types (think, stimulus A, stimulus B, ...)
+NUM_EVENTS=20# Total amount of total events
+Y_LIM=2 # Vertical plotting limit
+NOISE=0.005 # Internal noise - timer activation
+LEARNING_RATE=.9 # Default learning rate for timers
+STANDARD_INTERVAL=20 # Standard interval duration 
+RESPONSE_THRESHOLD=1 
 
-event_occurances = (list(zip(*events_with_type))[0])
-plt.hist(event_occurances, bins=80, color='black')
+colors = ['b', 'g', 'r', 'c', 'm', 'y', 'o', 'k'] # Color support for 8 kinds of events
+
+MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
+REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
+
+#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
+events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, num_exp = 1, standard_interval = 20)
+#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20) # All event occurances during this trial
+
+event_occurances = (list(zip(*events_with_type))[0]) # Relative occurance of event
+# plt.hist(event_occurances, bins=80, color='black')
 
 events = np.zeros(NUM_EVENTS)
 events_with_type[0][0] = event_occurances[0]
 
+# Make event_w_t in terms of absolute time
 for i in range (1,NUM_EVENTS):
      events_with_type[i][0] = events_with_type[i-1][0] + events_with_type[i][0]
 
 # Time axis for plotting        
 T = events_with_type[-1][0] + 100
 
-# Timer with 20 ramps, all initialized to be very highly weighted
+# Timer with x ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,40)
 
 plt.figure()
 
-timer.eventDict()[0] = [0,1,2]
-timer.eventDict()[1] = [3,4,5]
-free_indices = np.arange(5,40)
+timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to each event type
+timer.eventDict()[1] = np.arange(10,20).tolist()
+free_indices = np.arange(20,40) # Establish free ramps
+timer.time_until[3]=2
 
 # Timers are allocated to an event type based on the timer's eventDict object
 # eventDict takes in an event type as a key and gives an array of timer indices 
@@ -286,8 +294,8 @@ for idx, event in enumerate(events_with_type):
     if event_type not in timer.eventDict():
         # Allocate a new timer for this event type 
         # need protection if we run out of timers 
-        timer.eventDict()[event_type] = free_indices[:3]
-        free_indices = free_indices[4:]
+        timer.eventDict()[event_type] = free_indices[:5].tolist()
+        free_indices = free_indices[6:]
         
     event_timer_index = timer.eventDict()[event_type]
     prev_event = 0
@@ -298,12 +306,6 @@ for idx, event in enumerate(events_with_type):
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
-
-        
-        # plot multiple trajectories
-        
-        # threshold for reallocation is what?
-        # some threshold of max score possible
         
         # variable for each ramp about if its falling or not and the event that triggered it
         # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
@@ -312,7 +314,7 @@ for idx, event in enumerate(events_with_type):
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         
         for i in timer_value:
-            plt.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.5)
+            plt.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.8)
             #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
             plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
 
@@ -323,11 +325,22 @@ for idx, event in enumerate(events_with_type):
     else:
         prev_event = events_with_type[idx-1][0]
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
+        timer.active_ramps = free_indices[0]
         
+        if idx>2:
+            active_ramp_event = events_with_type[idx-2][0]
+            active_r_t = active_ramp_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+            
+            plt.plot([active_ramp_event,event_time], [0, i], linestyle = "solid",  c='pink', alpha=0.5)
+            plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
+            plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
+            
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
 
         response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+        
+        
         learning_rate = timer.learningRate(event_timer_index[0])
         new_learning_rate = 1 - math.exp(-0.1 * timer.getScore(event_timer_index[0]))
         timer.setLearningRate(event_timer_index[0], new_learning_rate)
@@ -341,11 +354,12 @@ for idx, event in enumerate(events_with_type):
            plt.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
     
-    # plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
+    #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
     update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)
      
-    plt.vlines(event, 0,Y_LIM, label="v", color=colors[event_type], alpha=0.5)
+    plt.vlines(event[0], 0,Y_LIM, label="v", color=colors[event_type], alpha=0.5)
+    print("event:", event)
     if Y_LIM>1:
         plt.hlines(1, 0, T, alpha=0.2, color='black')
   
@@ -355,7 +369,7 @@ for idx, event in enumerate(events_with_type):
     plt.xlabel("Time")
     plt.grid('on')
     #plt.pause(0.2)
-    
+print(timer.eventDict())
 plt.xlim([0,event_time + (.1 * event_time)])
 plt.show()
    

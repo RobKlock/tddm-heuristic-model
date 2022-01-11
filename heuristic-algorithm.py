@@ -80,6 +80,8 @@ def earlyUpdateRule(vt, timer_weight, learning_rate, v0=1.0, z = 1, bias = 1):
 
 def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
     act = timer.timers[ramp_index] * interval_length
+    print("ramp_index: ", ramp_index)
+    print(act)
     for i in range (0, len(act)):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     return act
@@ -220,6 +222,7 @@ def generate_hit_time(weight, threshold, noise, dt, plot=False):
 
     
 def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
+    # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
             continue
@@ -256,7 +259,7 @@ MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max 
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
 
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, num_exp = 1, standard_interval = 20)
+events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20)
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20) # All event occurances during this trial
 
 event_occurances = (list(zip(*events_with_type))[0]) # Relative occurance of event
@@ -326,7 +329,10 @@ for idx, event in enumerate(events_with_type):
 
     else:
         prev_event = events_with_type[idx-1][0]
+        print("event type: ", event_type, "event_timer_index: ", event_timer_index)
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
+        
+        
         timer.active_ramps = free_indices[0]
         
         # if idx>2:
@@ -336,7 +342,7 @@ for idx, event in enumerate(events_with_type):
         #     plt.plot([active_ramp_event,event_time], [0, i], linestyle = "solid",  c='pink', alpha=0.5)
         #     plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
         #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
-            
+        print("===Free Timers===")
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
 
         response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
@@ -344,8 +350,12 @@ for idx, event in enumerate(events_with_type):
         
         
         learning_rate = timer.learningRate(event_timer_index[0])
-        new_learning_rate = 1 - math.exp(-0.1 * timer.getScore(event_timer_index[0]))
+        # Learning rate drops as score increases
+        new_learning_rate = math.exp(-0.1 * timer.getScore(event_timer_index[0]))
+        print("learning rate: ", new_learning_rate)
         timer.setLearningRate(event_timer_index[0], new_learning_rate)
+        
+        
         # print("Timer: ", event_timer_index[0], "learning rate: ", timer.learningRate(event_timer_index[0]))
         for i in timer_value:
             plt.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)
@@ -358,11 +368,13 @@ for idx, event in enumerate(events_with_type):
                #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
         
     #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
+    #print("timer value: ", timer_value)
     update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)
      
     plt.vlines(event[0], 0,Y_LIM, label="v", color=colors[event_type], alpha=0.5)
     print("event:", event)
+    print("\n")
     if Y_LIM>1:
         plt.hlines(1, 0, T, alpha=0.2, color='black')
   

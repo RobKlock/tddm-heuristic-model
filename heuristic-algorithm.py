@@ -241,13 +241,14 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             timer.setTimerWeight(timer_weight, idx)
         
 dt = 0.1
-N_EVENT_TYPES= 4 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=20# Total amount of total events
+N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
+NUM_EVENTS=10# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.005 # Internal noise - timer activation
 LEARNING_RATE=.9 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 RESPONSE_THRESHOLD=1 
+PLOT_FREE_TIMERS=False
 
 colors = ['b', 'g', 'r', 'c', 'm', 'y', 'o', 'k'] # Color support for 8 kinds of events
 
@@ -317,23 +318,24 @@ for idx, event in enumerate(events_with_type):
             plt.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.8)
             #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
             plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
-
-        for i in free_timers_vals:
-            plt.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+        
+        if PLOT_FREE_TIMERS:
+            for i in free_timers_vals:
+                plt.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+                #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
 
     else:
         prev_event = events_with_type[idx-1][0]
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
         timer.active_ramps = free_indices[0]
         
-        if idx>2:
-            active_ramp_event = events_with_type[idx-2][0]
-            active_r_t = active_ramp_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+        # if idx>2:
+        #     active_ramp_event = events_with_type[idx-2][0]
+        #     active_r_t = active_ramp_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
             
-            plt.plot([active_ramp_event,event_time], [0, i], linestyle = "solid",  c='pink', alpha=0.5)
-            plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
-            plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
+        #     plt.plot([active_ramp_event,event_time], [0, i], linestyle = "solid",  c='pink', alpha=0.5)
+        #     plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
+        #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
             
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
 
@@ -350,10 +352,11 @@ for idx, event in enumerate(events_with_type):
             plt.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
             plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
         
-        for i in free_timers_vals:
-           plt.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-           #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-    
+        if PLOT_FREE_TIMERS:
+            for i in free_timers_vals:
+               plt.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+               #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+        
     #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
     update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)

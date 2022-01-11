@@ -245,7 +245,7 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
         
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=10# Total amount of total events
+NUM_EVENTS=8# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.005 # Internal noise - timer activation
 LEARNING_RATE=.9 # Default learning rate for timers
@@ -333,7 +333,7 @@ for idx, event in enumerate(events_with_type):
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
         
         
-        timer.active_ramps = free_indices[0]
+        #timer.active_ramps = free_indices[0]
         
         # if idx>2:
         #     active_ramp_event = events_with_type[idx-2][0]
@@ -342,11 +342,34 @@ for idx, event in enumerate(events_with_type):
         #     plt.plot([active_ramp_event,event_time], [0, i], linestyle = "solid",  c='pink', alpha=0.5)
         #     plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
         #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
-        print("===Free Timers===")
-        free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
 
         response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+        
+        avg_score=0
+        
+        for ramp_index in event_timer_index:
+            response_time = prev_event + generate_hit_time(timer.timerWeight(ramp_index), RESPONSE_THRESHOLD, NOISE, dt)
+            score = timer.getScore(ramp_index) + score_decay(response_time, event_time)
+            timer.setScore(ramp_index, score)
+            avg_score = avg_score+score
+        
+        # TODO: Make this not a magic number
+        avg_score = avg_score / 10
+        lowest_ramp_score_index = 1
+        for ramp_index in event_timer_index:
+            # if timer.scores[ramp_index] < avg_score
+            # recycle
+            if timer.scores[ramp_index] <  timer.scores[lowest_ramp_score_index]:
+                lowest_ramp_score_index = ramp_index
+        print("lowest_ramp_score_index: ",lowest_ramp_score_index)
+        print(timer.eventDict()[event_type] )
+        timer.eventDict()[event_type].pop(lowest_ramp_score_index)
+        print(timer.eventDict()[event_type] )
+        
+        print("===scores===:\n", timer.scores)
+        print("average score: ", avg_score)
+        
         
         
         learning_rate = timer.learningRate(event_timer_index[0])
@@ -355,7 +378,8 @@ for idx, event in enumerate(events_with_type):
         print("learning rate: ", new_learning_rate)
         timer.setLearningRate(event_timer_index[0], new_learning_rate)
         
-        
+        print("===Free Timers===")
+        free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         # print("Timer: ", event_timer_index[0], "learning rate: ", timer.learningRate(event_timer_index[0]))
         for i in timer_value:
             plt.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)

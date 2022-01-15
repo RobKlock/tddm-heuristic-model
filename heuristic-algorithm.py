@@ -244,8 +244,8 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             timer.setTimerWeight(timer_weight, idx)
         
 dt = 0.1
-N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=8# Total amount of total events
+N_EVENT_TYPES= 5 # Number of event types (think, stimulus A, stimulus B, ...)
+NUM_EVENTS=12# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.005 # Internal noise - timer activation
 LEARNING_RATE=.9 # Default learning rate for timers
@@ -260,6 +260,9 @@ REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it i
 
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20)
+print(events_with_type)
+events_with_type = np.asarray([[50,2], [20,1], [50,2], [20,1], [80,3], [20,4], [50,2], [20,1], [80,3], [20,1], [80,3], [20,1]])
+print(events_with_type)
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, standard_interval = 20) # All event occurances during this trial
 
 event_occurances = (list(zip(*events_with_type))[0]) # Relative occurance of event
@@ -276,7 +279,7 @@ for i in range (1,NUM_EVENTS):
 T = events_with_type[-1][0] + 100
 
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
-timer=TM(1,40)
+timer=TM(1,80)
 
 plt.figure()
 
@@ -364,7 +367,7 @@ for idx, event in enumerate(events_with_type):
                 lowest_ramp_score_index = ramp_index
         print("lowest_ramp_score_index: ",lowest_ramp_score_index)
         print(timer.eventDict()[event_type] )
-        timer.eventDict()[event_type].pop(lowest_ramp_score_index)
+        # timer.eventDict()[event_type].pop(lowest_ramp_score_index)
         print(timer.eventDict()[event_type] )
         
         print("===scores===:\n", timer.scores)
@@ -409,6 +412,16 @@ for idx, event in enumerate(events_with_type):
     plt.grid('on')
     #plt.pause(0.2)
 print(timer.eventDict())
+for index, event in enumerate(events_with_type):
+    print("index: ", index)
+    if index < NUM_EVENTS - 1:
+        plot_text_x = ((events_with_type[index][0] + events_with_type[index+1][0])/2) - 5
+        print("plot text x: ", plot_text_x)
+        plot_text_val = events_with_type[index+1][0] - events_with_type[index][0]
+        print("plot text val: ", plot_text_val)
+        plt.text(plot_text_x, 1.6, plot_text_val, fontsize=15)
 plt.xlim([0,event_time + (.1 * event_time)])
+plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
+plt.xticks([item[0] for item in events_with_type], [item[1] for item in events_with_type])
 plt.show()
    

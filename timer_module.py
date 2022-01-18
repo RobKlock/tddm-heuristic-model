@@ -14,6 +14,7 @@ import scipy.stats as stats
 from scipy import signal
 from scipy.optimize import minimize 
 from scipy.stats import norm
+from itertools import permutations
 """
 Scikit-Learn has useful Gaussian Mixture for probabilities 
 Be careful because they probably have two models: one for fitting
@@ -90,6 +91,8 @@ class TimerModule:
     def __init__(self,timer_weight = 1,n_timers=1):
         self.timers=np.empty(n_timers)
         self.timers.fill(timer_weight)
+        self.terminating_events=np.empty(n_timers)
+        self.terminating_events.fill(-1)
         self.timer_weight=timer_weight
         self.active_ramps=[]
         # a list of indices
@@ -218,14 +221,24 @@ class TimerModule:
         of the distribution in a seperate array if ret_params is True
         """
         num_dists = num_normal + num_exp
+        
+        # Get all permutations of intervals 
+        a = np.arange(num_dists)
+        b = np.arange(num_dists)
+        perm = permutations(np.concatenate((a, b), axis=None), 2)
+        a=set(list(perm))
+        #print(a)
+        print(len(a))
+        num_event_types = len(a)
+        
         # To get N random weights that sum to 1, add N-1 random numbers to an array
-        weights_probs = np.random.rand(num_dists - 1) 
+        weights_probs = np.random.rand(num_event_types - 1) 
         # Add 0 and 1 to that array
         weights_probs = np.append(weights_probs, 0)
         weights_probs = np.append(weights_probs, 1)
         # Sort them
         weights_probs = np.sort(weights_probs)
-        weights = np.zeros(num_dists)
+        weights = np.zeros(num_event_types)
         # After establishing the weight array, iterate through the probabilities 
         # and declare the Nth weight to be the difference between the entries at the N+1 and N-1
         # indices of the probability array
@@ -235,20 +248,23 @@ class TimerModule:
         weights = np.sort(weights)
         # Declare distribution types (1 is exp, 0 is normal)
         if num_normal == 0:
-            dist_types = np.ones(num_dists)
+            dist_types = np.ones(num_event_types)
         elif num_exp == 0:
-            dist_types = np.zeros(num_dists)
+            dist_types = np.zeros(num_event_types)
         else:
             dist_types = np.concatenate((np.ones(num_exp), np.zeros(num_normal)), axis=None)
+            dist_types = dist_types.concatenate(dist_types, np.zeros(num_event_types - num_normal - num_exp), axis=None)
         
         # Declare means and std deviations 
         locs = []
         scales = []
             
         # Establish our distributions
-        for i in range (0, num_dists):
+        for i in range (0, num_event_types):
             locs.append(np.random.randint(50,100))
             scales.append(math.sqrt(np.random.randint(20, 100)))
+       
+        
        
         # Roll a dice N times
         samples = [] #np.zeros(num_samples)
@@ -258,7 +274,7 @@ class TimerModule:
             dice_roll = np.random.rand(1)
 
             # Find which range it belongs in
-            for dist_index in range (0, num_dists):
+            for dist_index in range (0, num_event_types):
                 if (dice_roll < weights_probs[dist_index + 1]):
                     # The roll falls into this weight, draw our sample
                     if dist_types[dist_index] == 1:

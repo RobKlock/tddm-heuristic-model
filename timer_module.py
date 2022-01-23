@@ -222,13 +222,33 @@ class TimerModule:
         """
         num_dists = num_normal + num_exp
         
-        # Get all permutations of intervals 
+        # Get all permutations of interval pairs
         a = np.arange(num_dists)
         b = np.arange(num_dists)
         perm = permutations(np.concatenate((a, b), axis=None), 2)
-        a=set(list(perm))
-        #print(a)
-        print(len(a))
+        event_pairs=list(set(list(perm)))
+        
+        # A hash that gives the indices of event pairings that start with event X
+        keys=np.arange(num_dists)
+        valid_event_pairs = { key : [] for key in keys }
+        print(event_pairs)
+        print()
+        for i in range(0, len(event_pairs)):
+            pair = event_pairs[i]
+            starting_event_type = pair[0]
+        
+            print("adding index ", i, " to hash entry ", starting_event_type)
+            valid_event_pairs[starting_event_type].append(i)
+            print("event types ", valid_event_pairs)
+            print("\n")
+                
+        
+        # First event occurs
+        # pull next events (A, B, and C) and use which ever chooses first
+        # then repeat
+        # if we pull an exponential event, pull the next normal event to have the model progress
+        print("event types ", valid_event_pairs)
+
         num_event_types = len(a)
         
         # To get N random weights that sum to 1, add N-1 random numbers to an array
@@ -270,12 +290,15 @@ class TimerModule:
         samples = [] #np.zeros(num_samples)
                 # Roll our dice N times
         # I hate that this is O(N * D)
+        
+        first = True
         for i in range(0, num_samples):
             dice_roll = np.random.rand(1)
-
+            
             # Find which range it belongs in
             for dist_index in range (0, num_event_types):
                 if (dice_roll < weights_probs[dist_index + 1]):
+                   # if not first && samples[i - 1][1] == dist_index:
                     # The roll falls into this weight, draw our sample
                     if dist_types[dist_index] == 1:
                         sample = np.random.exponential(scales[dist_index], 1)[0]
@@ -286,6 +309,14 @@ class TimerModule:
                         if standard_interval > 0:
                             sample = np.random.normal(standard_interval,1, 1)[0]
                         samples.append([sample,dist_index])
+                    # if we pull a sample that doesnt begin where the prior left off, we re-roll
+                    # this is so we yield a chain like A->B->A->C->C composed of 
+                    # (A,B), (B,A), (A,C), (C,C) events
+                    
+                # else
+                #     while samples[i - 1] != dist_index:
+                #         dice_roll = np.random.rand(1)
+                            
                     break
                 
         return np.asarray(samples)

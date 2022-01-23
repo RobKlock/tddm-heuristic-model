@@ -15,6 +15,7 @@ import random
 from timer_module import TimerModule as TM
 from labellines import labelLine, labelLines
 from scipy.stats import invgauss   
+import matplotlib.colors as mcolors
 
 #print(TM.getSamples())
 
@@ -253,11 +254,7 @@ STANDARD_INTERVAL=20 # Standard interval duration
 RESPONSE_THRESHOLD=1 
 PLOT_FREE_TIMERS=False
 
-colors = ['b', 'g', 'r', 'c', 'm', 'y', 'o', 'k',
-          'b', 'g', 'r', 'c', 'm', 'y', 'o', 'k',
-          'b', 'g', 'r', 'c', 'm', 'y', 'o', 'k',
-          'b', 'g', 'r', 'c', 'm', 'y', 'o', 'k',
-          'b', 'g', 'r', 'c', 'm', 'y', 'o', 'k'] # Color support for 8 kinds of events
+colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 
 MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)

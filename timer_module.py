@@ -275,8 +275,9 @@ class TimerModule:
             
         # Establish our distributions
         for i in range (0, num_event_types):
-            locs.append(np.random.randint(50,100))
+            locs.append(np.random.randint(50,55))
             scales.append(math.sqrt(np.random.randint(20, 100)))
+        
         print("")
         print("locs: ", locs)
         print("scales: ", scales)
@@ -297,7 +298,7 @@ class TimerModule:
                     sample = np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
                     if standard_interval > 0:
                         sample = np.random.normal(standard_interval,1, 1)[0]
-                    samples.append([sample,event_pairs[dist_index][0]])
+                    samples.append([sample, dist_index, event_pairs[dist_index][0]])
                 break
                         
         # pull next events (A, B, and C) and use which ever chooses first
@@ -319,24 +320,31 @@ class TimerModule:
         print("next events: ", next_possible_events)
        
         next_event=next_possible_events[0]
-
-        samples.append([next_event[0],event_pairs[dist_index][0]])
+        print("next event: ", next_event)
+        print("event type: ", event_pairs[next_event[1]][1])
+        samples.append([next_event[0], next_event[1], event_pairs[next_event[1]][1]])
+        
         print(samples)
-                    
-        for i in range(1, num_samples):
-            print("sample: ", samples[i])
-            print("p", event_pairs[samples[i][1]][0])
-            next_event_types = valid_event_pairs[event_pairs[samples[i][1]][0]]
-            print("next_event_types: ", next_event_types)
+        # then repeat
+        print("=====")
+        print("=====")
+        # note: doesnt deal with exponential events
+        # then repeat     
+        for i in range(1, num_samples-1):
+            prev_sample = samples[i]
+            print("prev_sample: ", prev_sample)
+            next_event_types = valid_event_pairs[prev_sample[2]]
+            print("next_possible_events", next_event_types)
+        
             next_possible_events = list(map(sample_from_event_type, next_event_types))
             
             next_possible_events.sort(key=lambda y: y[0])
             print("next_possible_events: ", next_possible_events)
             next_event=next_possible_events[0]
-            samples.append([next_event[0],event_pairs[dist_index][0]])
+            samples.append([next_event[0], next_event[1], event_pairs[next_event[1]][1]])
 
             print("roll num: ", i)
-        # then repeat
+        
         # if we pull an exponential event, pull the next normal event to have the model progress
         
         
@@ -345,33 +353,33 @@ class TimerModule:
                 # Roll our dice N times
         # I hate that this is O(N * D)
         
-        first = True
-        for i in range(0, num_samples):
-            dice_roll = np.random.rand(1)
+        # first = True
+        # for i in range(0, num_samples):
+        #     dice_roll = np.random.rand(1)
             
-            # Find which range it belongs in
-            for dist_index in range (0, num_event_types):
-                if (dice_roll < weights_probs[dist_index + 1]):
-                   # if not first && samples[i - 1][1] == dist_index:
-                    # The roll falls into this weight, draw our sample
-                    if dist_types[dist_index] == 1:
-                        sample = np.random.exponential(scales[dist_index], 1)[0]
-                        samples.append([sample, dist_index])
+        #     # Find which range it belongs in
+        #     for dist_index in range (0, num_event_types):
+        #         if (dice_roll < weights_probs[dist_index + 1]):
+        #            # if not first && samples[i - 1][1] == dist_index:
+        #             # The roll falls into this weight, draw our sample
+        #             if dist_types[dist_index] == 1:
+        #                 sample = np.random.exponential(scales[dist_index], 1)[0]
+        #                 samples.append([sample, dist_index])
                     
-                    else:
-                        sample = np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
-                        if standard_interval > 0:
-                            sample = np.random.normal(standard_interval,1, 1)[0]
-                        samples.append([sample,dist_index])
-                    # if we pull a sample that doesnt begin where the prior left off, we re-roll
-                    # this is so we yield a chain like A->B->A->C->C composed of 
-                    # (A,B), (B,A), (A,C), (C,C) events
+        #             else:
+        #                 sample = np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
+        #                 if standard_interval > 0:
+        #                     sample = np.random.normal(standard_interval,1, 1)[0]
+        #                 samples.append([sample,dist_index])
+        #             # if we pull a sample that doesnt begin where the prior left off, we re-roll
+        #             # this is so we yield a chain like A->B->A->C->C composed of 
+        #             # (A,B), (B,A), (A,C), (C,C) events
                     
-                # else
-                #     while samples[i - 1] != dist_index:
-                #         dice_roll = np.random.rand(1)
+        #         # else
+        #         #     while samples[i - 1] != dist_index:
+        #         #         dice_roll = np.random.rand(1)
                             
-                    break
+        #             break
                 
         return np.asarray(samples)
 # Useful visualization, just comment it out 

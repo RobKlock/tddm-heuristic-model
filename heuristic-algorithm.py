@@ -246,10 +246,10 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
         
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=12# Total amount of total events
+NUM_EVENTS=20# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.005 # Internal noise - timer activation
-LEARNING_RATE=.9 # Default learning rate for timers
+LEARNING_RATE=.95 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 RESPONSE_THRESHOLD=1 
 PLOT_FREE_TIMERS=False
@@ -423,6 +423,6 @@ print(timer.eventDict())
         #plt.text(plot_text_x, 1.6, plot_text_val, fontsize=15)
 plt.xlim([0,event_time + (.1 * event_time)])
 #plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
-plt.xticks([item[0] for item in events_with_type], [item[1] for item in events_with_type])
+plt.xticks([item[0] for item in events_with_type], [item[2] for item in events_with_type])
 plt.show()
    

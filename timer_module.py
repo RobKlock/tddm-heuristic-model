@@ -227,29 +227,22 @@ class TimerModule:
         b = np.arange(num_dists)
         perm = permutations(np.concatenate((a, b), axis=None), 2)
         event_pairs=list(set(list(perm)))
+        print("event pairs: ", event_pairs)
         
         # A hash that gives the indices of event pairings that start with event X
         keys=np.arange(num_dists)
         valid_event_pairs = { key : [] for key in keys }
-        print(event_pairs)
-        print()
         for i in range(0, len(event_pairs)):
             pair = event_pairs[i]
             starting_event_type = pair[0]
         
-            print("adding index ", i, " to hash entry ", starting_event_type)
+           # print("adding index ", i, " to hash entry ", starting_event_type)
             valid_event_pairs[starting_event_type].append(i)
-            print("event types ", valid_event_pairs)
-            print("\n")
-                
+           # print("event types ", valid_event_pairs)
+           # print("\n")
         
-        # First event occurs
-        # pull next events (A, B, and C) and use which ever chooses first
-        # then repeat
-        # if we pull an exponential event, pull the next normal event to have the model progress
-        print("event types ", valid_event_pairs)
-
-        num_event_types = len(a)
+        print("valid event pairs: ", valid_event_pairs)
+        num_event_types = num_dists * num_dists
         
         # To get N random weights that sum to 1, add N-1 random numbers to an array
         weights_probs = np.random.rand(num_event_types - 1) 
@@ -275,6 +268,7 @@ class TimerModule:
             dist_types = np.concatenate((np.ones(num_exp), np.zeros(num_normal)), axis=None)
             dist_types = dist_types.concatenate(dist_types, np.zeros(num_event_types - num_normal - num_exp), axis=None)
         
+        print("dist types: ", dist_types)
         # Declare means and std deviations 
         locs = []
         scales = []
@@ -283,11 +277,71 @@ class TimerModule:
         for i in range (0, num_event_types):
             locs.append(np.random.randint(50,100))
             scales.append(math.sqrt(np.random.randint(20, 100)))
-       
+        print("")
+        print("locs: ", locs)
+        print("scales: ", scales)
+        print("")
+        samples = [] 
+        # First event occurs
+        dice_roll = np.random.rand(1)
+        # find its event type
+        for dist_index in range (0, num_event_types):
+            if (dice_roll < weights_probs[dist_index + 1]):
+                print("di: ", dist_index)
+                    
+                if dist_types[dist_index] == 1:
+                    sample = np.random.exponential(scales[dist_index], 1)[0]
+                    samples.append([sample, dist_index])
+                
+                else:
+                    sample = np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
+                    if standard_interval > 0:
+                        sample = np.random.normal(standard_interval,1, 1)[0]
+                    samples.append([sample,event_pairs[dist_index][0]])
+                break
+                        
+        # pull next events (A, B, and C) and use which ever chooses first
+        next_event_types = valid_event_pairs[event_pairs[dist_index][0]]
         
+        def sample_from_event_type(typ):
+            print("typ: ", typ)
+            if dist_types[typ] == 1:
+                sample = np.random.exponential(scales[dist_index], 1)[0]
+            else:
+                sample = np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
+             
+            return [sample, typ]
+        
+        print("next event types: ", next_event_types)
+        
+        next_possible_events = list(map(sample_from_event_type, next_event_types))
+        next_possible_events.sort(key=lambda y: y[0])
+        print("next events: ", next_possible_events)
        
+        next_event=next_possible_events[0]
+
+        samples.append([next_event[0],event_pairs[dist_index][0]])
+        print(samples)
+                    
+        for i in range(1, num_samples):
+            print("sample: ", samples[i])
+            print("p", event_pairs[samples[i][1]][0])
+            next_event_types = valid_event_pairs[event_pairs[samples[i][1]][0]]
+            print("next_event_types: ", next_event_types)
+            next_possible_events = list(map(sample_from_event_type, next_event_types))
+            
+            next_possible_events.sort(key=lambda y: y[0])
+            print("next_possible_events: ", next_possible_events)
+            next_event=next_possible_events[0]
+            samples.append([next_event[0],event_pairs[dist_index][0]])
+
+            print("roll num: ", i)
+        # then repeat
+        # if we pull an exponential event, pull the next normal event to have the model progress
+        
+        
         # Roll a dice N times
-        samples = [] #np.zeros(num_samples)
+         #np.zeros(num_samples)
                 # Roll our dice N times
         # I hate that this is O(N * D)
         

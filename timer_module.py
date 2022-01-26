@@ -214,7 +214,7 @@ class TimerModule:
         
         return 1
     
-    def getSamples(num_samples = 1, num_normal = 2, num_exp = 0, ret_params = False, standard_interval = -1):
+    def getSamples(num_samples = 1, num_normal = 2, num_exp = 0, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
         """
         A function that generates random times from a probability 
         distribution that is the weighted sum of exponentials and Gaussians. Returns the parameters 
@@ -275,8 +275,8 @@ class TimerModule:
             
         # Establish our distributions
         for i in range (0, num_event_types):
-            locs.append(np.random.randint(50,55))
-            scales.append(math.sqrt(np.random.randint(20, 100)))
+            locs.append(np.random.randint(50,80))
+            scales.append(math.sqrt(np.random.randint(scale_beg, scale_end)))
         
         print("")
         print("locs: ", locs)

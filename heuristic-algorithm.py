@@ -248,7 +248,7 @@ dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
 NUM_EVENTS=40# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.0002 # Internal noise - timer activation
+NOISE=0.00 # Internal noise - timer activation
 LEARNING_RATE=.95 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 RESPONSE_THRESHOLD=1 
@@ -283,8 +283,12 @@ T = events_with_type[-1][0]
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,80)
 
-plt.figure(1)
-plt.figure(2)
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
+
+#plt.figure(1)
+#plt.figure(2)
+
 timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to each event type
 timer.eventDict()[1] = np.arange(10,20).tolist()
 free_indices = np.arange(20,40) # Establish free ramps
@@ -325,15 +329,15 @@ for idx, event in enumerate(events_with_type):
         timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         
         for i in timer_value:
-            plt.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.8)
+            ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.8)
             #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-            plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
+            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
         
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
-                plt.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+                ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
                 #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-        plt.text(0,2.1,ALPHABET_ARR[int(event[2])])
+        ax1.text(0,2.1,ALPHABET_ARR[int(event[2])])
    
     else:
         prev_event = events_with_type[idx-1][0]
@@ -394,13 +398,13 @@ for idx, event in enumerate(events_with_type):
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         # print("Timer: ", event_timer_index[0], "learning rate: ", timer.learningRate(event_timer_index[0]))
         for i in timer_value:
-            plt.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)
-            plt.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
-            plt.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
+            ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)
+            ax1.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
+            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
         
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
-               plt.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+               ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
                #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
         
     #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
@@ -408,19 +412,19 @@ for idx, event in enumerate(events_with_type):
     update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
     # TODO: Rest of the heuristic (scores, reallocation, etc)
      
-    plt.vlines(event[0], 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
+    ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
     
-    plt.text(event[0],2.1,ALPHABET_ARR[int(event[2])])
+    ax1.text(event[0],2.1,ALPHABET_ARR[int(event[2])])
     print("event:", event)
     print("\n")
     if Y_LIM>1:
         plt.hlines(1, 0, event_time, alpha=0.2, color='black')
   
-    plt.ylim([0,Y_LIM])
-    plt.xlim([0,event_time])
-    plt.ylabel("activation")
-    plt.xlabel("Time")
-    plt.grid('on')
+    ax1.set_ylim([0,Y_LIM])
+    ax1.set_xlim([0,event_time])
+    ax1.set_ylabel("Activation")
+    ax1.set_xlabel("Time")
+    ax1.grid('on')
     #plt.pause(0.2)
 print(timer.eventDict())
 # for index, event in enumerate(events_with_type):
@@ -434,11 +438,12 @@ print(timer.eventDict())
 # plt.xlim([0,event_time + (.1 * event_time)])
 #plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
 #plt.xticks([item[0] for item in events_with_type], [item[2] for item in events_with_type])
-plt.figure(1)
-plt.plot(np.arange(0,NUM_EVENTS,1), error_arr)
-plt.ylabel("Deviation")
-plt.xlabel("Time")
-plt.grid('on')
-plt.title("Sq Error")
+# plt.figure(1)
+ax2.plot(np.arange(0,NUM_EVENTS,1), error_arr)
+ax2.set_xlim([0,NUM_EVENTS])
+ax2.set_ylabel("Sq Error")
+ax2.set_xlabel("Event #")
+ax2.grid('on')
+# ax2.set_title("Sq Error")
 plt.show()
    

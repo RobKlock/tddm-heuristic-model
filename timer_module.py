@@ -16,9 +16,7 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from itertools import permutations
 """
-Scikit-Learn has useful Gaussian Mixture for probabilities 
-Be careful because they probably have two models: one for fitting
-and another for generating samples.
+
 
 Alternatively:
     3 components with different weights
@@ -196,9 +194,9 @@ class TimerModule:
     def updateBias(b):
         add_b = b[:4]
         return np.concatenate((b, add_b))
- 
-    def generate_sample_from_parameters(n=1, normal_locs=None , normal_scales=None,
-                                        exponential_scales=None):
+     
+    def generate_sample_from_parameters(num_samples = 1, normal_locs=[] , normal_scales=[],
+                                        exponential_scales=[]):
         """
         To be used with predefined distributions in the world. Pass in the distributions'
         scales and centers, and get back N samples. Uses all matching samples and disregards
@@ -206,6 +204,17 @@ class TimerModule:
         """
         
         # Calculate number of total distributions
+        num_normal = len(normal_locs)
+        num_exp = len(exponential_scales)
+        num_dists = num_normal + num_exp
+        
+        event_types = np.arange(num_dists)
+        b = np.arange(num_dists)
+        perm = permutations(np.concatenate((event_types, event_types), axis=None), 2)
+        event_pairs=list(set(list(perm)))
+        print("event pairs: ", event_pairs)
+
+        
         # Generate equal weights based on below algorithm
         # Roll a dice
         # Find which distribution to pull from

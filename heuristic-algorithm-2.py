@@ -18,7 +18,7 @@ from scipy.stats import invgauss
 import matplotlib.colors as mcolors
 
 #print(TM.getSamples())
-
+# This version sends all ramps of a certain type at an interval onset
 def getSampleFromParameters(params):
     """
     Parameters
@@ -259,8 +259,12 @@ colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
+HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(8, 15, 1)]
+
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 21)
+events_with_type = np.insert(events_with_type, 0, [0,0,0], axis=0)
+NUM_EVENTS = NUM_EVENTS+1
 #print(events_with_type)
 #events_with_type = np.asarray([[50,2], [20,1], [50,2], [20,1], [80,3], [20,4], [50,2], [20,1], [80,3], [20,1], [80,3], [20,1]])
 #print(events_with_type)
@@ -292,8 +296,8 @@ ax2 = plt.subplot(212)
 #plt.figure(2)
 
 timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to each event type
-timer.eventDict()[1] = np.arange(10,20).tolist()
-free_indices = np.arange(20,40) # Establish free ramps
+
+free_indices = np.arange(10,40) # Establish free ramps
 timer.time_until[3]=2
 
 # Timers are allocated to an event type based on the timer's eventDict object
@@ -306,46 +310,56 @@ first_event = True
 for idx, event in enumerate(events_with_type):
     event_time = event[0]
     event_type = int(event[1])
+    stimulus_type = int(event[2])
     
-    if event_type not in timer.eventDict():
+    if stimulus_type not in timer.eventDict():
         # Allocate a new timer for this event type 
         # need protection if we run out of timers 
-        timer.eventDict()[event_type] = free_indices[:5].tolist()
-        free_indices = free_indices[6:]
+        timer.eventDict()[stimulus_type] = free_indices[:10].tolist()
+        free_indices = free_indices[11:]
         
-    event_timer_index = timer.eventDict()[event_type]
+    event_timer_index = timer.eventDict()[stimulus_type]
     prev_event = 0
-
+    house_light= False
+    if idx in HOUSE_LIGHT_ON:
+        house_light = True
+    
     if first_event:
-        first_event=False                   
-        timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
-        free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
-        
-        response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
-        error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+        first_event=False   
+        if house_light:      
+            ax1.plot([0, events_with_type[idx+1][0]], [1.9, 1.9], 'k-', lw=4)
+            timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
+            free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
+            
+            response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+            error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+            #update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
 
-        # variable for each ramp about if its falling or not and the event that triggered it
-        # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
-        
-        # Do we want to score the first event which we know is bad?
-        timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
-        
+            # variable for each ramp about if its falling or not and the event that triggered it
+            # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
+            
+            # Do we want to score the first event which we know is bad?
+            timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
+            #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
+            ax1.text(0,2.1,ALPHABET_ARR[stimulus_type])
+
         for i in timer_value:
-            ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[event_type], alpha=0.8)
+            ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
             #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
+            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='o', c=colors[stimulus_type], alpha=0.8) 
         
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                 ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
                 #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-        ax1.text(0,2.1,ALPHABET_ARR[int(event[2])])
+                
    
     else:
         prev_event = events_with_type[idx-1][0]
         prev_event_type= int(events_with_type[idx-1][1])
         
-        print("event type: ", event_type, "event_timer_index: ", event_timer_index)
+        print("event type: ", stimulus_type, "event_timer_index: ", event_timer_index)
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
         
         
@@ -360,93 +374,103 @@ for idx, event in enumerate(events_with_type):
         #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
 
         response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
-        timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+        if house_light:
+            ax1.plot([prev_event, event_time], [1.9, 1.9], 'k-', lw=4)
+           
+            timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
         
-        avg_score=0
+            avg_score=0
         
-        for ramp_index in event_timer_index:
-            response_time = prev_event + generate_hit_time(timer.timerWeight(ramp_index), RESPONSE_THRESHOLD, NOISE, dt)
-            score = timer.getScore(ramp_index) + score_decay(response_time, event_time)
-            timer.setScore(ramp_index, score)
-            avg_score = avg_score+score
+            for ramp_index in event_timer_index:
+                response_time = prev_event + generate_hit_time(timer.timerWeight(ramp_index), RESPONSE_THRESHOLD, NOISE, dt)
+                score = timer.getScore(ramp_index) + score_decay(response_time, event_time)
+                timer.setScore(ramp_index, score)
+                avg_score = avg_score+score
        
-        error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+            error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
         
-        # TODO: Make this not a magic number
-        avg_score = avg_score / 10
-        lowest_ramp_score_index = 1
-        for ramp_index in event_timer_index:
-            # if timer.scores[ramp_index] < avg_score
-            # recycle
-            if timer.scores[ramp_index] <  timer.scores[lowest_ramp_score_index]:
-                lowest_ramp_score_index = ramp_index
-        print("lowest_ramp_score_index: ",lowest_ramp_score_index)
-        print(timer.eventDict()[event_type] )
-        # timer.eventDict()[event_type].pop(lowest_ramp_score_index)
-        print(timer.eventDict()[event_type] )
+            # TODO: Make this not a magic number
+            avg_score = avg_score / 10
+            lowest_ramp_score_index = 1
+            for ramp_index in event_timer_index:
+                # if timer.scores[ramp_index] < avg_score
+                # recycle
+                if timer.scores[ramp_index] <  timer.scores[lowest_ramp_score_index]:
+                    lowest_ramp_score_index = ramp_index
+        # print("lowest_ramp_score_index: ",lowest_ramp_score_index)
+        # print(timer.eventDict()[stimulus_type] )
+        # # timer.eventDict()[event_type].pop(lowest_ramp_score_index)
+        # print(timer.eventDict()[stimulus_type] )
         
-        print("===scores===:\n", timer.scores)
-        print("average score: ", avg_score)
+        # print("===scores===:\n", timer.scores)
+        # print("average score: ", avg_score)
         
         
         
-        learning_rate = timer.learningRate(event_timer_index[0])
+            learning_rate = timer.learningRate(event_timer_index[0])
         # Learning rate drops as score increases
-        new_learning_rate = math.exp(-0.1 * timer.getScore(event_timer_index[0]))
-        print("learning rate: ", new_learning_rate)
-        timer.setLearningRate(event_timer_index[0], new_learning_rate)
+            new_learning_rate = math.exp(-0.1 * timer.getScore(event_timer_index[0]))
+        # print("learning rate: ", new_learning_rate)
+            timer.setLearningRate(event_timer_index[0], new_learning_rate)
+            for i in timer_value:
+                ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)
+                ax1.plot([event_time], [i], marker='o',c=colors[stimulus_type], alpha=0.2) 
+                ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[stimulus_type], alpha=0.8) 
+            update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
         
-        print("===Free Timers===")
+        
+        # print("===Free Timers===")
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         # print("Timer: ", event_timer_index[0], "learning rate: ", timer.learningRate(event_timer_index[0]))
-        for i in timer_value:
-            ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[event_type], alpha=0.5)
-            ax1.plot([event_time], [i], marker='o',c=colors[event_type], alpha=0.2) 
-            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[event_type], alpha=0.8) 
+       
         
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-               #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-        
-    #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
-    #print("timer value: ", timer_value)
-    update_rule(timer_value, timer, event_timer_index, prev_event, event_time, event_type, plot= False)    
-    # TODO: Rest of the heuristic (scores, reallocation, etc)
-     
-    ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
-    
-    ax1.text(event[0],2.1,ALPHABET_ARR[int(event[2])])
-    print("event:", event)
-    print("\n")
-    if Y_LIM>1:
-        plt.hlines(1, 0, event_time, alpha=0.2, color='black')
-  
-    ax1.set_ylim([0,Y_LIM])
-    ax1.set_xlim([0,event_time])
-    ax1.set_ylabel("Activation")
-    ax1.set_xlabel("Time")
-    ax1.grid('on')
-    #plt.pause(0.2)
-print(timer.eventDict())
-# for index, event in enumerate(events_with_type):
-#     print("index: ", index)
-#     if index < NUM_EVENTS - 1:
-        #plot_text_x = ((events_with_type[index][0] + events_with_type[index+1][0])/2) - 5
-        #print("plot text x: ", plot_text_x)
-        #plot_text_val = events_with_type[index+1][0] - events_with_type[index][0]
-        #print("plot text val: ", plot_text_val)
-        #plt.text(plot_text_x, 1.6, plot_text_val, fontsize=15)
+                   #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+            
+        #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
+        #print("timer value: ", timer_value)
+       
+        # TODO: Rest of the heuristic (scores, reallocation, etc)
+         
+        ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
+        if idx < NUM_EVENTS - 1:
+            ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
+        else:
+            ax1.text(event[0],2.1,'End')
+       
+        print("event:", event)
+        print("\n")
+        if Y_LIM>1:
+            plt.hlines(1, 0, event_time, alpha=0.2, color='black')
+      
+        ax1.set_ylim([0,Y_LIM])
+        ax1.set_xlim([0,event_time])
+        ax1.set_ylabel("Activation")
+        ax1.set_xlabel("Time")
+        ax1.grid('on')
+        #plt.pause(0.2)
+    print(timer.eventDict())
+    # for index, event in enumerate(events_with_type):
+    #     print("index: ", index)
+    #     if index < NUM_EVENTS - 1:
+            #plot_text_x = ((events_with_type[index][0] + events_with_type[index+1][0])/2) - 5
+            #print("plot text x: ", plot_text_x)
+            #plot_text_val = events_with_type[index+1][0] - events_with_type[index][0]
+            #print("plot text val: ", plot_text_val)
+            #plt.text(plot_text_x, 1.6, plot_text_val, fontsize=15)
 # plt.xlim([0,event_time + (.1 * event_time)])
 #plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
 #plt.xticks([item[0] for item in events_with_type], [item[2] for item in events_with_type])
 # plt.figure(1)
 ax2.plot(np.arange(0,NUM_EVENTS,1), error_arr)
-ax1.plot([70, 80], [1.9, 1.9], 'k-', lw=4)
 ax2.set_xlim([0,NUM_EVENTS])
 ax2.set_ylabel("Sq Error")
 ax2.set_xlabel("Event #")
 ax2.grid('on')
 # ax2.set_title("Sq Error")
 plt.show()
+print(HOUSE_LIGHT_ON)
+
    

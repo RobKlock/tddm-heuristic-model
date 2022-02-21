@@ -243,9 +243,49 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             ''' Late Update Rule '''
             timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
             timer.setTimerWeight(timer_weight, idx)
+            
+def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
+    # Frozen timers arent updated
+    for idx, value in zip(timer_indices, timer_values):
+        if idx in timer.frozen_ramps:
+            continue
+        flip = random.random()
+       
+        if flip >=.5:
+            if value > 1:
+                ''' Early Update Rule '''
+                #lot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                plt.grid('on')
+    
+                if plot:
+                    plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                        
+                timer.setTimerWeight(timer_weight, idx)
+                
+            else:
+                ''' Late Update Rule '''
+                timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                timer.setTimerWeight(timer_weight, idx)
+
+def scale_events(scale, events):
+    for event in events:
+        event[0] = event[0] * scale
+    return events
+
+def scale_events_by_index(indices, scale, events):
+    for index in indices:
+        events[index][0] = events[index][0]*scale
+    return events
+
+def scale_events_by_type(typ, scale, events):
+    for event in events:
+        if event[2]==typ:
+            event[0] = event[0] * scale
+    return events
         
 dt = 0.1
-N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
+N_EVENT_TYPES= 3 # Number of event types (think, stimulus A, stimulus B, ...)
 NUM_EVENTS=15# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.002 # Internal noise - timer activation
@@ -259,10 +299,10 @@ colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
-HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(8, 15, 1)]
-
+# HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(8, 15, 1)]
+HOUSE_LIGHT_ON = [*range(0,16,1)]
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 21)
+events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 events_with_type = np.insert(events_with_type, 0, [0,0,0], axis=0)
 NUM_EVENTS = NUM_EVENTS+1
 #print(events_with_type)
@@ -278,7 +318,9 @@ error_arr = np.zeros(NUM_EVENTS)
 #events_with_type[0][0] = event_occurances[0]
 
 # TODO: Add a third tuple to events_with_type for house light
-
+#events_with_type = scale_events(.5, events_with_type)
+# events_with_type = scale_events_by_index([3,4,5,6], 3, events_with_type)
+events_with_type = scale_events_by_type(0, 2, events_with_type)
 # Make event_w_t in terms of absolute time
 for i in range (1,NUM_EVENTS):
      events_with_type[i][0] = events_with_type[i-1][0] + events_with_type[i][0]
@@ -326,29 +368,32 @@ for idx, event in enumerate(events_with_type):
     
     if first_event:
         first_event=False   
-        if house_light:      
-            ax1.plot([0, events_with_type[idx+1][0]], [1.9, 1.9], 'k-', lw=4)
-            timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
-            free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
-            
-            response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
-            error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
-            #update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
-
-            # variable for each ramp about if its falling or not and the event that triggered it
-            # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
-            
-            # Do we want to score the first event which we know is bad?
-            timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
-            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
-            #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
-            ax1.text(0,2.1,ALPHABET_ARR[stimulus_type])
-
-        for i in timer_value:
-            ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
-            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
-            ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='o', c=colors[stimulus_type], alpha=0.8) 
+        event_time = events_with_type[idx+1][0]
+        # plot house light indicator
+        ax1.plot([0, events_with_type[idx+1][0]], [1.9, 1.9], 'k-', lw=4)
+       
+       
+        timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
+        free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         
+        response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+        error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+        #update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
+       
+        # variable for each ramp about if its falling or not and the event that triggered it
+        # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
+       
+        # Do we want to score the first event which we know is bad?
+        timer.setScore(event_timer_index, timer.getScore(event_timer_index[0]) + score_decay(response_time, event_time))
+        ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
+        #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
+        ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
+       
+        for i in timer_value:
+           ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
+           #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+           # ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='o', c=colors[stimulus_type], alpha=0.8) 
+           
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                 ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
@@ -358,7 +403,9 @@ for idx, event in enumerate(events_with_type):
     else:
         prev_event = events_with_type[idx-1][0]
         prev_event_type= int(events_with_type[idx-1][1])
-        
+        avg_weight = np.mean(timer.timers[event_timer_index])
+        print("weights: ", timer.timers[event_timer_index])
+        print("avg weight: ", avg_weight)
         print("event type: ", stimulus_type, "event_timer_index: ", event_timer_index)
         timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time - events_with_type[idx-1][0], NOISE)
         
@@ -373,7 +420,8 @@ for idx, event in enumerate(events_with_type):
         #     plt.plot([event_time], [i], marker='o',c='pink', alpha=0.5) 
         #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
 
-        response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+        #response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+        response_time = prev_event + generate_hit_time(avg_weight, RESPONSE_THRESHOLD, NOISE, dt)
         if house_light:
             ax1.plot([prev_event, event_time], [1.9, 1.9], 'k-', lw=4)
            
@@ -416,7 +464,9 @@ for idx, event in enumerate(events_with_type):
                 ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)
                 ax1.plot([event_time], [i], marker='o',c=colors[stimulus_type], alpha=0.2) 
                 ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[stimulus_type], alpha=0.8) 
-            update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
+            
+            # If B occurs before light OFF, a coin is flipped for each ramp, chosen ones are updated to time A->B
+            coin_flip_update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
         
         
         # print("===Free Timers===")

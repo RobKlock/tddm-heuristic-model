@@ -299,8 +299,8 @@ colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
-# HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(8, 15, 1)]
-HOUSE_LIGHT_ON = [*range(0,16,1)]
+HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(6, 8, 1)] + [*range(10, 15, 1)]
+# HOUSE_LIGHT_ON = [*range(0,16,1)]
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 events_with_type = np.insert(events_with_type, 0, [0,0,0], axis=0)

@@ -244,7 +244,7 @@ def update_rule(timer_values, timer, timer_indices, start_time, end_time, event_
             timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
             timer.setTimerWeight(timer_weight, idx)
             
-def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_time, event_type, v0=1.0, z = 1, bias = 1, plot = False):
+def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_time, stimulus_type, event_type, next_stimulus_type, v0=1.0, z = 1, bias = 1, plot = False):
     # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
@@ -252,21 +252,25 @@ def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_ti
         flip = random.random()
        
         if flip >=.5:
-            if value > 1:
-                ''' Early Update Rule '''
-                #lot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
-                timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
-                plt.grid('on')
-    
-                if plot:
-                    plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
-                        
-                timer.setTimerWeight(timer_weight, idx)
-                
-            else:
-                ''' Late Update Rule '''
-                timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
-                timer.setTimerWeight(timer_weight, idx)
+            # only update timer for those that keep track of next stim type
+            print("event dict timer:", timer.eventDict())
+            # event_dict=timer.eventDict()
+            if int(next_stimulus_type) in timer.stimulusDict().keys() and (idx in timer.stimulusDict()[int(next_stimulus_type)]):
+                if value > 1:
+                    ''' Early Update Rule '''
+                    #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                    timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    plt.grid('on')
+        
+                    if plot:
+                        plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                            
+                    timer.setTimerWeight(timer_weight, idx)
+                    
+                else:
+                    ''' Late Update Rule '''
+                    timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    timer.setTimerWeight(timer_weight, idx)
 
 def scale_events(scale, events):
     for event in events:
@@ -286,7 +290,7 @@ def scale_events_by_type(typ, scale, events):
         
 dt = 0.1
 N_EVENT_TYPES= 3 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=15# Total amount of total events
+NUM_EVENTS=50# Total amount of total events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.002 # Internal noise - timer activation
 LEARNING_RATE=.95 # Default learning rate for timers
@@ -299,8 +303,8 @@ colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 MAX_SCORE = NUM_EVENTS # Max score over all events is just num_events since max score on a single event is 1
 REALLOCATION_THRESHOLD = .7 # If average performance of a timer is below .7 it is reallocated (frozen)
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
-HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(6, 8, 1)] + [*range(10, 15, 1)]
-# HOUSE_LIGHT_ON = [*range(0,16,1)]
+# HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(6, 8, 1)] + [*range(10, 15, 1)]
+HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)]
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 events_with_type = np.insert(events_with_type, 0, [0,0,0], axis=0)
@@ -329,7 +333,7 @@ for i in range (1,NUM_EVENTS):
 T = events_with_type[-1][0]
 
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
-timer=TM(1,80)
+timer=TM(1,200)
 
 ax1 = plt.subplot(211)
 ax2 = plt.subplot(212)
@@ -339,7 +343,7 @@ ax2 = plt.subplot(212)
 
 timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to each event type
 
-free_indices = np.arange(10,40) # Establish free ramps
+free_indices = np.arange(10,200) # Establish free ramps
 timer.time_until[3]=2
 
 # Timers are allocated to an event type based on the timer's eventDict object
@@ -353,14 +357,25 @@ for idx, event in enumerate(events_with_type):
     event_time = event[0]
     event_type = int(event[1])
     stimulus_type = int(event[2])
+    try:
+        next_stimulus_type = int(events_with_type[idx+1][2])
+    except IndexError:
+        next_stimulus_type = -1
+    print("free indices: ", free_indices)
     
-    if stimulus_type not in timer.eventDict():
+    if stimulus_type not in timer.stimulusDict():
         # Allocate a new timer for this event type 
         # need protection if we run out of timers 
-        timer.eventDict()[stimulus_type] = free_indices[:10].tolist()
+        timer.stimulusDict()[stimulus_type] = free_indices[:10].tolist()
+        free_indices = free_indices[11:]
+    
+    if event_type not in timer.eventDict():
+        # Allocate a new timer for this event type 
+        # need protection if we run out of timers 
+        timer.eventDict()[event_type] = free_indices[:10].tolist()
         free_indices = free_indices[11:]
         
-    event_timer_index = timer.eventDict()[stimulus_type]
+    event_timer_index = timer.stimulusDict()[stimulus_type]
     prev_event = 0
     house_light= False
     if idx in HOUSE_LIGHT_ON:
@@ -378,7 +393,7 @@ for idx, event in enumerate(events_with_type):
         
         response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
         error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
-        #update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
+        # coin_flip_update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, event_type, next_stimulus_type, plot= False)    
        
         # variable for each ramp about if its falling or not and the event that triggered it
         # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
@@ -403,6 +418,7 @@ for idx, event in enumerate(events_with_type):
     else:
         prev_event = events_with_type[idx-1][0]
         prev_event_type= int(events_with_type[idx-1][1])
+        prev_event_stim= int(events_with_type[idx-1][2])
         avg_weight = np.mean(timer.timers[event_timer_index])
         print("weights: ", timer.timers[event_timer_index])
         print("avg weight: ", avg_weight)
@@ -421,6 +437,7 @@ for idx, event in enumerate(events_with_type):
         #     plt.plot([active_r_t], [RESPONSE_THRESHOLD], marker='x', c='pink', alpha=0.8) 
 
         #response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+       
         response_time = prev_event + generate_hit_time(avg_weight, RESPONSE_THRESHOLD, NOISE, dt)
         if house_light:
             ax1.plot([prev_event, event_time], [1.9, 1.9], 'k-', lw=4)
@@ -466,7 +483,7 @@ for idx, event in enumerate(events_with_type):
                 ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='x', c=colors[stimulus_type], alpha=0.8) 
             
             # If B occurs before light OFF, a coin is flipped for each ramp, chosen ones are updated to time A->B
-            coin_flip_update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, plot= False)    
+            coin_flip_update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, event_type, next_stimulus_type, plot= False)    
         
         
         # print("===Free Timers===")
@@ -484,7 +501,7 @@ for idx, event in enumerate(events_with_type):
        
         # TODO: Rest of the heuristic (scores, reallocation, etc)
          
-        ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
+        ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[prev_event_stim]) #color=colors[4 + int(event[2])])
         if idx < NUM_EVENTS - 1:
             ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
         else:
@@ -501,7 +518,7 @@ for idx, event in enumerate(events_with_type):
         ax1.set_xlabel("Time")
         ax1.grid('on')
         #plt.pause(0.2)
-    print(timer.eventDict())
+    print(timer.stimulusDict())
     # for index, event in enumerate(events_with_type):
     #     print("index: ", index)
     #     if index < NUM_EVENTS - 1:

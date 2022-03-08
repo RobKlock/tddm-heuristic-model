@@ -216,7 +216,7 @@ class TimerModule:
         b = np.arange(num_dists)
         perm = permutations(np.concatenate((event_types, event_types), axis=None), 2)
         event_pairs=list(set(list(perm)))
-        print("event pairs: ", event_pairs)
+        # print("event pairs: ", event_pairs)
 
         
         # Generate equal weights based on below algorithm
@@ -233,15 +233,39 @@ class TimerModule:
         distribution that is the weighted sum of exponentials and Gaussians. Returns the parameters 
         of the distribution in a seperate array if ret_params is True
         """
-        num_dists = num_normal + num_exp
+        num_event_types = num_normal + num_exp
         
-        # Get all permutations of interval pairs
+        P = np.random.rand(num_event_types,num_event_types)
+        P = P/P.sum(axis=1)
+       # D = np.random.randint(2,size=(num_event_types,num_event_types))
+        T = np.random.randint(20,50, size=(num_event_types,num_event_types))
+        S = np.full((num_event_types, num_event_types), 20)
+        D=np.ones((num_event_types,num_event_types))
+        NUM_DISTS = num_event_types * num_event_types
+        DIST_INDICES = np.arange(NUM_DISTS)
+        DIST_INDICES.shape=(num_event_types,num_event_types)
+        
+        
+        state = np.random.randint(num_event_types)
+        samples = []
+        
+        for i in range(num_samples):
+            next_state = np.random.multinomial(1,P[state,:])
+            next_state = np.where(next_state==1)[0][0]
+            # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
+            time = (np.random.normal(T[state,next_state], 10,1) * D[state,next_state]) #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
+            print(D[state,next_state])
+            samples.append((time,DIST_INDICES[state,next_state],state))  
+            state = next_state
+        return samples
+        
+    # Get all permutations of interval pairs
         a = np.arange(num_dists)
         b = np.arange(num_dists)
         perm = permutations(np.concatenate((a, b), axis=None), 2)
         event_pairs=list(set(list(perm)))
-        print("event pairs: ", event_pairs)
-        
+        # print("event pairs: ", event_pairs)
+        # TODO: Maybe put this into the matrix notation they talked about
         # A hash that gives the indices of event pairings that start with event X
         keys=np.arange(num_dists)
         valid_event_pairs = { key : [] for key in keys }
@@ -254,7 +278,7 @@ class TimerModule:
            # print("event types ", valid_event_pairs)
            # print("\n")
         
-        print("valid event pairs: ", valid_event_pairs)
+        # print("valid event pairs: ", valid_event_pairs)
         num_event_types = num_dists * num_dists
         
         # To get N random weights that sum to 1, add N-1 random numbers to an array
@@ -281,7 +305,7 @@ class TimerModule:
             dist_types = np.concatenate((np.ones(num_exp), np.zeros(num_normal)), axis=None)
             dist_types = dist_types.concatenate(dist_types, np.zeros(num_event_types - num_normal - num_exp), axis=None)
         
-        print("dist types: ", dist_types)
+        # print("dist types: ", dist_types)
         # Declare means and std deviations 
         locs = []
         scales = []
@@ -291,10 +315,10 @@ class TimerModule:
             locs.append(np.random.randint(50,80))
             scales.append(math.sqrt(np.random.randint(scale_beg, scale_end)))
         
-        print("")
-        print("locs: ", locs)
-        print("scales: ", scales)
-        print("")
+        # print("")
+        # print("locs: ", locs)
+        # print("scales: ", scales)
+        # print("")
         samples = [] 
         # First event occurs
         dice_roll = np.random.rand(1)
@@ -318,7 +342,7 @@ class TimerModule:
         next_event_types = valid_event_pairs[event_pairs[dist_index][0]]
         
         def sample_from_event_type(typ):
-            print("typ: ", typ)
+            #print("typ: ", typ)
             if dist_types[typ] == 1:
                 sample = np.random.exponential(scales[dist_index], 1)[0]
             else:
@@ -326,37 +350,37 @@ class TimerModule:
              
             return [sample, typ]
         
-        print("next event types: ", next_event_types)
+        # print("next event types: ", next_event_types)
         
         next_possible_events = list(map(sample_from_event_type, next_event_types))
         next_possible_events.sort(key=lambda y: y[0])
-        print("next events: ", next_possible_events)
+        # print("next events: ", next_possible_events)
        
         next_event=next_possible_events[0]
-        print("next event: ", next_event)
-        print("event type: ", event_pairs[next_event[1]][1])
+        # print("next event: ", next_event)
+        # print("event type: ", event_pairs[next_event[1]][1])
         samples.append([next_event[0], next_event[1], event_pairs[next_event[1]][1]])
         
-        print(samples)
+        # print(samples)
         # then repeat
-        print("=====")
-        print("=====")
+        # print("=====")
+        # print("=====")
         # note: doesnt deal with exponential events
         # then repeat     
         for i in range(1, num_samples-1):
             prev_sample = samples[i]
-            print("prev_sample: ", prev_sample)
+            # print("prev_sample: ", prev_sample)
             next_event_types = valid_event_pairs[prev_sample[2]]
-            print("next_possible_events", next_event_types)
+            # print("next_possible_events", next_event_types)
         
             next_possible_events = list(map(sample_from_event_type, next_event_types))
             
             next_possible_events.sort(key=lambda y: y[0])
-            print("next_possible_events: ", next_possible_events)
+            # print("next_possible_events: ", next_possible_events)
             next_event=next_possible_events[0]
             samples.append([next_event[0], next_event[1], event_pairs[next_event[1]][1]])
 
-            print("roll num: ", i)
+            # print("roll num: ", i)
         
         # if we pull an exponential event, pull the next normal event to have the model progress
         

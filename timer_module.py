@@ -236,8 +236,10 @@ class TimerModule:
         num_event_types = num_normal + num_exp
         
         P = np.random.rand(num_event_types,num_event_types)
-        P = P/P.sum(axis=1)
-       # D = np.random.randint(2,size=(num_event_types,num_event_types))
+        #print("P: ", P)
+        #print("P sum: ", P.sum(axis=1, keepdims=True))
+        P = P/P.sum(axis=1, keepdims=True)
+        # D = np.random.randint(2,size=(num_event_types,num_event_types))
         T = np.random.randint(20,50, size=(num_event_types,num_event_types))
         S = np.full((num_event_types, num_event_types), 20)
         D=np.ones((num_event_types,num_event_types))
@@ -248,14 +250,17 @@ class TimerModule:
         
         state = np.random.randint(num_event_types)
         samples = []
-        
+        #print("P: ", P)
         for i in range(num_samples):
+            
+            # if P[state,:].sum() > 1:
+            #     P[state,:] = P[state,:] - (P[state,:].sum()/num_event_types)
             next_state = np.random.multinomial(1,P[state,:])
             next_state = np.where(next_state==1)[0][0]
             # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
             time = (np.random.normal(T[state,next_state], 10,1) * D[state,next_state]) #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
-            print(D[state,next_state])
-            samples.append((time,DIST_INDICES[state,next_state],state))  
+            #print(D[state,next_state])
+            samples.append((time[0],DIST_INDICES[state,next_state],state))  
             state = next_state
         return samples
         

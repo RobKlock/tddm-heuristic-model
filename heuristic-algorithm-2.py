@@ -421,7 +421,9 @@ for idx, event in enumerate(events_with_type):
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
-        error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+        #print("denominator: ", event[0] - prev_event)
+        #error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
+        error_arr[idx] = 1
         # coin_flip_update_rule(timer_value, timer, event_timer_index, prev_event, event_time, stimulus_type, event_type, next_stimulus_type, plot= False)    
        
         # variable for each ramp about if its falling or not and the event that triggered it
@@ -483,7 +485,12 @@ for idx, event in enumerate(events_with_type):
                 avg_score = avg_score+score
             
             avg_ramp=avg_ramp/10
+            #response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[0]), RESPONSE_THRESHOLD, NOISE, dt)
+            # random ramp in the group of ramps
+            #response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[np.random.randint(len(event_timer_index))]), RESPONSE_THRESHOLD, NOISE, dt)
             response_time = prev_event + generate_hit_time(avg_ramp, RESPONSE_THRESHOLD, NOISE, dt)
+            
+            print("denominator", event[0] - prev_event)
             error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
         
             # TODO: Make this not a magic number
@@ -494,13 +501,7 @@ for idx, event in enumerate(events_with_type):
                 # recycle
                 if timer.scores[ramp_index] <  timer.scores[lowest_ramp_score_index]:
                     lowest_ramp_score_index = ramp_index
-        # print("lowest_ramp_score_index: ",lowest_ramp_score_index)
-        # print(timer.eventDict()[stimulus_type] )
-        # # timer.eventDict()[event_type].pop(lowest_ramp_score_index)
-        # print(timer.eventDict()[stimulus_type] )
-        
-        # print("===scores===:\n", timer.scores)
-        # print("average score: ", avg_score)
+       
         
         
             # Fix this to be average of all scores

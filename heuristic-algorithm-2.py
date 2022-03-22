@@ -490,7 +490,7 @@ for idx, event in enumerate(events_with_type):
             #response_time = prev_event + generate_hit_time(timer.timerWeight(event_timer_index[np.random.randint(len(event_timer_index))]), RESPONSE_THRESHOLD, NOISE, dt)
             response_time = prev_event + generate_hit_time(avg_ramp, RESPONSE_THRESHOLD, NOISE, dt)
             
-            print("denominator", event[0] - prev_event)
+            # print("denominator", event[0] - prev_event)
             error_arr[idx] = ((event[0] - response_time) / (event[0] - prev_event))**2
         
             # TODO: Make this not a magic number
@@ -505,12 +505,12 @@ for idx, event in enumerate(events_with_type):
         
         
             # Fix this to be average of all scores
-            learning_rate = timer.learningRate(event_timer_index[0])
+            # learning_rate = timer.learningRate(event_timer_index[0])
         # Learning rate drops as score increases
-            new_learning_rate = math.exp(-0.1 * avg_score)
+            # new_learning_rate = math.exp(-0.1 * avg_score)
             # new_learning_rate = math.exp(-0.1 * timer.getScore(event_timer_index[0]))
         # print("learning rate: ", new_learning_rate)
-            
+            new_learning_rate = 1
             timer.setLearningRate(event_timer_index[0], new_learning_rate)
             for i in timer_value:
                 ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)

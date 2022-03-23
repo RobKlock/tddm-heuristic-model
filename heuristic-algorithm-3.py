@@ -45,6 +45,19 @@ def generate_hit_time(weight, threshold, noise, dt, plot=False):
     if hit_time > 0:    
         return hit_time
 
+def start_threshold_time(act_at_interval_end, interval_length):
+    angle = np.arctan(act_at_interval_end/interval_length)
+    beta = 3.14159 - (1.5708 + angle)
+    return START_THRESHOLD * np.tan(3.14159 - (1.5708 + angle))
+
+def stop_threshold_time(act_at_interval_end, interval_length):
+    angle = np.arctan(act_at_interval_end/interval_length)
+    beta = 3.14159 - (1.5708 + angle)
+    return STOP_THRESHOLD * np.tan(3.14159 - (1.5708 + angle))
+    
+    
+    
+
 def lateUpdateRule(vt, timer_weight, learning_rate, v0=1.0, z = 1, bias = 1):
     """
     Parameters
@@ -178,7 +191,7 @@ for i in range (1,NUM_EVENTS):
 T = events_with_type[-1][0]
 
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
-timer=TM(1,200)
+timer=TM(10,200)
 
 ax1 = plt.subplot(211)
 ax2 = plt.subplot(212)
@@ -238,15 +251,18 @@ for idx, event in enumerate(events_with_type):
         ramps_stim_index = np.arange(0,len(timer.timers))
         
         timer_value = activationAtIntervalEnd(timer, ramps_stim_index, next_event, NOISE)
-       
+        # plot the full step by step process
+        # use np.where to find where it goes above and below threshold
+        # keep track of how many are in response range
+        
+        start_threshold_times = start_threshold_time(timer_value, next_event)
+        stop_threshold_times = stop_threshold_time(timer_value, next_event)
+        print(start_threshold_times)
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(ramps_stim_index[0]), TIMER_THRESHOLD, NOISE, dt)
         
         coin_flip_update_rule(timer_value, timer, ramps_stim_index, prev_event, event_time, stimulus_type, event_type, next_stimulus_type, plot= False)    
-       
-        # variable for each ramp about if its falling or not and the event that triggered it
-        # A has ramps that are frozen and not frozen, and it times durations to different kinds of events
        
         # Do we want to score the first event which we know is bad?
         #timer.setScore(ramps_stim_index, timer.getScore(ramps_stim_index[0]) + score_decay(response_time, event_time))
@@ -254,15 +270,20 @@ for idx, event in enumerate(events_with_type):
         #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
         ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
        
-        for i in timer_value:
-           ax1.plot([0,event_time], [0, i], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
+        for i, value in enumerate(timer_value):
+           ax1.plot([start_threshold_times[i]], [START_THRESHOLD], marker='x', alpha=0.8) 
+           ax1.plot([stop_threshold_times[i]], [STOP_THRESHOLD], marker='o', alpha=0.8) 
+           ax1.plot([0,next_event], [0, value], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
            # ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='o', c=colors[stimulus_type], alpha=0.8) 
            
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                 ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-                #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+                
+ax1.plot([0,T],[START_THRESHOLD, START_THRESHOLD], '0.8', lw=1)
+ax1.plot([0,T],[STOP_THRESHOLD, STOP_THRESHOLD], '0.8', lw=1)
     
+
     
     

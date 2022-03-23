@@ -55,6 +55,10 @@ def stop_threshold_time(act_at_interval_end, interval_length):
     beta = 3.14159 - (1.5708 + angle)
     return STOP_THRESHOLD * np.tan(3.14159 - (1.5708 + angle))
     
+def generate_responses(interval_length):
+    num_samples = int(interval_length / dt)
+    responses = np.random.exponential(1, num_samples)
+    return responses
     
     
 
@@ -257,7 +261,7 @@ for idx, event in enumerate(events_with_type):
         
         start_threshold_times = start_threshold_time(timer_value, next_event)
         stop_threshold_times = stop_threshold_time(timer_value, next_event)
-        print(start_threshold_times)
+        #print(start_threshold_times)
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(ramps_stim_index[0]), TIMER_THRESHOLD, NOISE, dt)
@@ -283,6 +287,11 @@ for idx, event in enumerate(events_with_type):
                 
 ax1.plot([0,T],[START_THRESHOLD, START_THRESHOLD], '0.8', lw=1)
 ax1.plot([0,T],[STOP_THRESHOLD, STOP_THRESHOLD], '0.8', lw=1)
+r = generate_responses(100)
+c = np.cumsum(r)
+#ax2.hist(r, bins=200)
+ax2.plot(c, np.ones(1000), '.')
+
     
 
     

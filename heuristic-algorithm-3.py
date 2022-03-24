@@ -167,6 +167,7 @@ Y_LIM=2 # Vertical plotting limit
 NOISE=0.002 # Internal noise - timer activation
 LEARNING_RATE=.99 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
+K = 5 # Amount of timers that must be active to respond
 START_THRESHOLD=.9
 STOP_THRESHOLD=1.1
 TIMER_THRESHOLD=1 
@@ -260,8 +261,15 @@ for idx, event in enumerate(events_with_type):
         # keep track of how many are in response range
         
         start_threshold_times = start_threshold_time(timer_value, next_event)
+        start_threshold_times.sort()
         stop_threshold_times = stop_threshold_time(timer_value, next_event)
-        #print(start_threshold_times)
+        stop_threshold_times.sort()
+        start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times)).T
+        
+        for jdx, time in enumerate(start_stop_pairs):
+            print(time[0])
+            print(time[1])
+        
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(ramps_stim_index[0]), TIMER_THRESHOLD, NOISE, dt)
@@ -273,7 +281,10 @@ for idx, event in enumerate(events_with_type):
         ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
         #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
         ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
-       
+        r = generate_responses(100)
+        c = np.cumsum(r)
+        
+        
         for i, value in enumerate(timer_value):
            ax1.plot([start_threshold_times[i]], [START_THRESHOLD], marker='x', alpha=0.8) 
            ax1.plot([stop_threshold_times[i]], [STOP_THRESHOLD], marker='o', alpha=0.8) 
@@ -287,8 +298,7 @@ for idx, event in enumerate(events_with_type):
                 
 ax1.plot([0,T],[START_THRESHOLD, START_THRESHOLD], '0.8', lw=1)
 ax1.plot([0,T],[STOP_THRESHOLD, STOP_THRESHOLD], '0.8', lw=1)
-r = generate_responses(100)
-c = np.cumsum(r)
+
 #ax2.hist(r, bins=200)
 ax2.plot(c, np.ones(1000), '.')
 

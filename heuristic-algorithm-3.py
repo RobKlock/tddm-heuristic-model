@@ -164,10 +164,10 @@ dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
 NUM_EVENTS=20 # Total amount of events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.002 # Internal noise - timer activation
+NOISE=0.04 # Internal noise - timer activation
 LEARNING_RATE=.99 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
-K = 5 # Amount of timers that must be active to respond
+K = 100 # Amount of timers that must be active to respond
 START_THRESHOLD=.9
 STOP_THRESHOLD=1.1
 TIMER_THRESHOLD=1 
@@ -196,7 +196,7 @@ for i in range (1,NUM_EVENTS):
 T = events_with_type[-1][0]
 
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
-timer=TM(10,200)
+timer=TM(1,200)
 
 ax1 = plt.subplot(211)
 ax2 = plt.subplot(212)
@@ -273,6 +273,14 @@ for idx, event in enumerate(events_with_type):
         for jdx, time in enumerate(start_stop_pairs):
             if time[0] < start_stop_pairs[stop_temp_idx][1]:
                 k_count+=1
+            else:
+                k_count-=1
+                stop_temp_idx+=1
+            
+            if start_stop_pairs[stop_temp_idx][1] < time[0]: 
+                k_count-=1
+            
+            print(k_count)
             s =  time[0] + np.random.exponential(1, 1) * dt
                 
             (k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
@@ -298,7 +306,7 @@ for idx, event in enumerate(events_with_type):
         for i, value in enumerate(timer_value):
            ax1.plot([start_threshold_times[i]], [START_THRESHOLD], marker='x', alpha=0.8) 
            ax1.plot([stop_threshold_times[i]], [STOP_THRESHOLD], marker='o', alpha=0.8) 
-           ax1.plot([0,next_event], [0, value], linestyle = "dashed", c=colors[stimulus_type], alpha=0.8)
+           ax1.plot([0,next_event], [0, value], linestyle = "dashed", c=colors[stimulus_type], alpha=0.1)
            #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
            # ax1.plot([response_time], [RESPONSE_THRESHOLD], marker='o', c=colors[stimulus_type], alpha=0.8) 
            

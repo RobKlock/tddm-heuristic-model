@@ -265,10 +265,21 @@ for idx, event in enumerate(events_with_type):
         stop_threshold_times = stop_threshold_time(timer_value, next_event)
         stop_threshold_times.sort()
         start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times)).T
-        
+        r = list(generate_responses(100))
+        c = np.cumsum(r)
+        responses = []
+        k_count = 0
+        stop_temp_idx = 0
         for jdx, time in enumerate(start_stop_pairs):
-            print(time[0])
-            print(time[1])
+            if time[0] < start_stop_pairs[stop_temp_idx][1]:
+                k_count+=1
+            s =  time[0] + np.random.exponential(1, 1) * dt
+                
+            (k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
+        
+        ax1.plot(responses, np.ones(len(responses)), '.')
+            
+                
         
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
         
@@ -281,8 +292,7 @@ for idx, event in enumerate(events_with_type):
         ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
         #ax1.text(event_time,2.1,ALPHABET_ARR[int(events_with_type[idx][2])])
         ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
-        r = generate_responses(100)
-        c = np.cumsum(r)
+      
         
         
         for i, value in enumerate(timer_value):

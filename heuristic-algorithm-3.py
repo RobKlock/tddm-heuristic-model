@@ -169,7 +169,7 @@ LEARNING_RATE=.99 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 100 # Amount of timers that must be active to respond
 START_THRESHOLD=.9
-STOP_THRESHOLD=1.1
+STOP_THRESHOLD=.95
 TIMER_THRESHOLD=1 
 PLOT_FREE_TIMERS=False
 
@@ -196,7 +196,7 @@ for i in range (1,NUM_EVENTS):
 T = events_with_type[-1][0]
 
 # Timer with x ramps, all initialized to be very highly weighted (n=1)
-timer=TM(1,200)
+timer=TM(2,200)
 
 ax1 = plt.subplot(211)
 ax2 = plt.subplot(212)
@@ -269,18 +269,22 @@ for idx, event in enumerate(events_with_type):
         c = np.cumsum(r)
         responses = []
         k_count = 0
-        stop_temp_idx = 0
+        start_ramp_pointer_idx = K
+        stop_ramp_pointer_idx = 0
+        
+        
         for jdx, time in enumerate(start_stop_pairs):
-            if time[0] < start_stop_pairs[stop_temp_idx][1]:
+            # Need to see if this is equivalent to the original algorithm
+            # do we need to sample at every timestep?
+            if time[0] < start_stop_pairs[stop_ramp_pointer_idx][1]:
                 k_count+=1
             else:
-                k_count-=1
-                stop_temp_idx+=1
+                k_count=max(0,k_count-1)
+                stop_ramp_pointer_idx+=1
             
-            if start_stop_pairs[stop_temp_idx][1] < time[0]: 
-                k_count-=1
-            
-            print(k_count)
+            if start_stop_pairs[stop_ramp_pointer_idx][1] < time[0]: 
+                k_count=max(0,k_count-1)
+              
             s =  time[0] + np.random.exponential(1, 1) * dt
                 
             (k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)

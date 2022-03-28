@@ -272,7 +272,7 @@ for idx, event in enumerate(events_with_type):
         start_ramp_pointer_idx = K
         stop_ramp_pointer_idx = 0
         
-        
+        # This has to be in terms of dt/aboslute time, not start stop pairs
         for jdx, time in enumerate(start_stop_pairs):
             # Need to see if this is equivalent to the original algorithm
             # do we need to sample at every timestep?
@@ -284,7 +284,8 @@ for idx, event in enumerate(events_with_type):
             
             if start_stop_pairs[stop_ramp_pointer_idx][1] < time[0]: 
                 k_count=max(0,k_count-1)
-              
+            
+            # Generate all and cumsum instead of this
             s =  time[0] + np.random.exponential(1, 1) * dt
                 
             (k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)

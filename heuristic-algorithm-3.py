@@ -167,7 +167,7 @@ Y_LIM=2 # Vertical plotting limit
 NOISE=0.04 # Internal noise - timer activation
 LEARNING_RATE=.99 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
-K = 100 # Amount of timers that must be active to respond
+K = 3 # Amount of timers that must be active to respond
 START_THRESHOLD=.9
 STOP_THRESHOLD=.95
 TIMER_THRESHOLD=1 
@@ -292,7 +292,7 @@ for idx, event in enumerate(events_with_type):
                 if k<K and plot_end and not plot_start:
                     plot_end=False
                     interval_stop = time[1]
-                    ax1.vlines(time[1], 0, Y_LIM, color="red")
+                    #ax1.vlines(time[1], 0, Y_LIM, color="red")
                 stop_ramp_pointer_idx+=1
                 response_end_pointer = stop_ramp_pointer_idx
             
@@ -301,7 +301,7 @@ for idx, event in enumerate(events_with_type):
             if k >= K and s:
                 if plot_start:
                     plot_start=False
-                    ax1.vlines(time[0], 0, Y_LIM, color="green")
+                    #ax1.vlines(time[0], 0, Y_LIM, color="green")
                 if s<next_event:    
                     responses.append(s)
             #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
@@ -312,8 +312,6 @@ for idx, event in enumerate(events_with_type):
             
         #print(np.argwhere(start_stop_pairs > start_stop_pairs[0][1]))
             
-                
-        
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
         
         response_time = generate_hit_time(timer.timerWeight(ramps_stim_index[0]), TIMER_THRESHOLD, NOISE, dt)
@@ -338,6 +336,115 @@ for idx, event in enumerate(events_with_type):
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                 ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+    else:
+        prev_event = events_with_type[idx-1][0]
+        prev_event_type= int(events_with_type[idx-1][1])
+        prev_event_stim= int(events_with_type[idx-1][2])
+        avg_weight = np.mean(timer.timers[ramps_stim_index])
+        timer_value = activationAtIntervalEnd(timer, ramps_stim_index, event_time - events_with_type[idx-1][0], NOISE)
+        
+       
+        #response_time = prev_event + generate_hit_time(avg_weight, RESPONSE_THRESHOLD, NOISE, dt)
+        if house_light:
+            ax1.plot([prev_event, event_time], [1.9, 1.9], 'k-', lw=4)
+           
+           
+            start_threshold_times = start_threshold_time(timer_value, next_event)
+            start_threshold_times.sort()
+            stop_threshold_times = stop_threshold_time(timer_value, next_event)
+            stop_threshold_times.sort()
+            start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times)).T
+            
+            
+            # This doesnt seem right
+            r = list(generate_responses(100))
+            r.insert(0, event_time)
+            r=list(np.cumsum(r))
+            
+            plot_start=True
+            plot_end=True
+            c = np.cumsum(r)
+            responses = []
+            k = 0
+            
+            stop_ramp_pointer_idx = 0
+            response_start_pointer=0
+            response_end_pointer=0
+            
+            for jdx, time in enumerate(start_stop_pairs):
+                # Need to see if this is equivalent to the original algorithm
+                # do we need to sample at every timestep?
+                if time[0] < start_stop_pairs[stop_ramp_pointer_idx][1]:
+                    k+=1
+                    response_end_pointer = stop_ramp_pointer_idx
+                else:
+                    k=max(0,k-1)
+                    if k<K and plot_end and not plot_start:
+                        plot_end=False
+                        interval_stop = time[1]
+                        ax1.vlines(time[1], 0, Y_LIM, color="red")
+                    stop_ramp_pointer_idx+=1
+                    response_end_pointer = stop_ramp_pointer_idx
+                
+                # Generate all and cumsum instead of this
+                s =  r.pop(0)
+                if k >= K and s:
+                    if plot_start:
+                        plot_start=False
+                        ax1.vlines(time[0], 0, Y_LIM, color="green")
+                    if s<next_event:    
+                        responses.append(s)
+                #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
+            
+            ax1.plot(responses, np.ones(len(responses)), '.')
+            
+           # print("denominator", event[0] - prev_event)
+            
+        
+            for i in timer_value:
+                ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)
+                ax1.plot([event_time], [i], marker='o',c=colors[stimulus_type], alpha=0.2) 
+                #ax1.plot([response_time], [TIMER_THRESHOLD], marker='x', c=colors[stimulus_type], alpha=0.8) 
+            
+            # If B occurs before light OFF, a coin is flipped for each ramp, chosen ones are updated to time A->B
+            coin_flip_update_rule(timer_value, timer, ramps_stim_index, prev_event, event_time, stimulus_type, event_type, next_stimulus_type, plot= False)    
+            
+           
+            # Look forward to all other intervals before house light turns off and start updating weights
+            curr_interval_idx = HOUSE_LIGHT_ON.index(idx)
+            next_house_light_idx = idx + 1
+            house_light_interval = True
+        
+        # print("===Free Timers===")
+        free_timers_vals = activationAtIntervalEnd(timer, free_indices, event_time, NOISE)
+        # print("Timer: ", ramps_stim_index[0], "learning rate: ", timer.learningRate(ramps_stim_index[0]))
+       
+        if PLOT_FREE_TIMERS:
+            for i in free_timers_vals:
+               ax1.plot([prev_event,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
+                   #plt.plot([event_time], [i], marker='o',c=colors[event_type],  alpha=0.2) 
+            
+        #plot_early_update_rule(prev_event, event_time, timer.timerWeight(), T)
+        #print("timer value: ", timer_value)
+       
+        # TODO: Rest of the heuristic (scores, reallocation, etc)
+         
+        ax1.vlines(event[0], 0,Y_LIM, label="v", color=colors[prev_event_stim]) #color=colors[4 + int(event[2])])
+        if idx < NUM_EVENTS - 1:
+            ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
+        else:
+            ax1.text(event[0],2.1,'End')
+       
+        #print("event:", event)
+        #print("\n")
+        if Y_LIM>1:
+            plt.hlines(1, 0, event_time, alpha=0.2, color='black')
+      
+        ax1.set_ylim([0,Y_LIM])
+        ax1.set_xlim([0,event_time])
+        ax1.set_ylabel("Activation")
+        ax1.set_xlabel("Time")
+        ax1.grid('on')
                 
 ax1.plot([0,2],[START_THRESHOLD, START_THRESHOLD], '0.8', lw=1)
 ax1.plot([0,2],[STOP_THRESHOLD, STOP_THRESHOLD], '0.8', lw=1)

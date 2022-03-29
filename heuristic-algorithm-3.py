@@ -265,31 +265,46 @@ for idx, event in enumerate(events_with_type):
         stop_threshold_times = stop_threshold_time(timer_value, next_event)
         stop_threshold_times.sort()
         start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times)).T
+        
+        # This doesnt seem right
         r = list(generate_responses(100))
+        r.insert(0, start_stop_pairs[0][0])
+        r=list(np.cumsum(r))
+        
+        plot_start=True
+        plot_end=True
         c = np.cumsum(r)
         responses = []
-        k_count = 0
-        start_ramp_pointer_idx = K
+        k = 0
+        
         stop_ramp_pointer_idx = 0
         response_start_pointer=0
         response_end_pointer=0
         
-        # This has to be in terms of dt/aboslute time, not start stop pairs
         for jdx, time in enumerate(start_stop_pairs):
             # Need to see if this is equivalent to the original algorithm
             # do we need to sample at every timestep?
             if time[0] < start_stop_pairs[stop_ramp_pointer_idx][1]:
-                k_count+=1
+                k+=1
                 response_end_pointer = stop_ramp_pointer_idx
             else:
-                k_count=max(0,k_count-1)
+                k=max(0,k-1)
+                if k<K and plot_end and not plot_start:
+                    plot_end=False
+                    interval_stop = time[1]
+                    ax1.vlines(time[1], 0, Y_LIM, color="red")
                 stop_ramp_pointer_idx+=1
                 response_end_pointer = stop_ramp_pointer_idx
             
             # Generate all and cumsum instead of this
-            s =  time[0] + .01 # np.random.exponential(1, 1) * dt
-                
-            (k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
+            s =  r.pop(0)
+            if k >= K and s:
+                if plot_start:
+                    plot_start=False
+                    ax1.vlines(time[0], 0, Y_LIM, color="green")
+                if s<next_event:    
+                    responses.append(s)
+            #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
         
         ax1.plot(responses, np.ones(len(responses)), '.')
         
@@ -328,7 +343,7 @@ ax1.plot([0,2],[START_THRESHOLD, START_THRESHOLD], '0.8', lw=1)
 ax1.plot([0,2],[STOP_THRESHOLD, STOP_THRESHOLD], '0.8', lw=1)
 
 #ax2.hist(r, bins=200)
-ax2.plot(c, np.ones(1000), '.')
+#ax2.plot(c, np.ones(1000), '.')
 
     
 

@@ -355,7 +355,6 @@ for idx, event in enumerate(events_with_type):
         if house_light:
             ax1.plot([prev_event, event_time], [1.9, 1.9], 'k-', lw=4)
            
-           
             start_threshold_times = start_threshold_time(timer_value, event_time)
             start_threshold_times.sort()
             stop_threshold_times = stop_threshold_time(timer_value, event_time)

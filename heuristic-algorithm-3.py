@@ -357,10 +357,12 @@ for idx, event in enumerate(events_with_type):
            
             start_threshold_times = start_threshold_time(timer_value, event_time)
             start_threshold_times.sort()
+            start_threshold_times = np.vstack((start_threshold_times, np.ones(len(start_threshold_times)))).T
             stop_threshold_times = stop_threshold_time(timer_value, event_time)
             stop_threshold_times.sort()
-            start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times)).T
-            
+            stop_threshold_times = np.vstack((stop_threshold_times, (-1* np.ones(len(stop_threshold_times))))).T
+            start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times))
+            start_stop_pairs = start_stop_pairs[start_stop_pairs[:, 0].argsort()]
             
             # This doesnt seem right
             r = list(generate_responses(100))

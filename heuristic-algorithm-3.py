@@ -296,6 +296,8 @@ for idx, event in enumerate(events_with_type):
                     #ax1.vlines(time[0], 0, Y_LIM, color="green")
                 if s<next_event:    
                     responses.append(s)
+                    print(responses)
+                    print("next event: ",next_event)
             #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
        
         ax1.plot(responses, np.ones(len(responses)), '.')
@@ -363,11 +365,13 @@ for idx, event in enumerate(events_with_type):
             plot_end=True
         
             responses = []
+            print(responses)
+            print("next event: ",next_event)
+            
             k = 0
             threshold_reached=True
             
             stop_ramp_pointer_idx = 0
-            # TODO: Fix this
             response_start_time=event_time
             response_start_pointer=0
             response_end_pointer=0
@@ -378,14 +382,16 @@ for idx, event in enumerate(events_with_type):
                     response_start_time = time[0]
                     threshold_reached=False
                 # Generate all and cumsum instead of this
-                s =  r.pop(0) + response_start_time
+                
+                s =  r.pop(0) + prev_event
                 
                 if k >= K and s:
                     if plot_start:
                         plot_start=False
                         #ax1.vlines(time[0], 0, Y_LIM, color="green")
-                    if s<next_event:    
+                    if s<next_event and s>prev_event:    
                         responses.append(s)
+                        print(s)
                 #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
             
             ax1.plot(responses, np.ones(len(responses)), '.')

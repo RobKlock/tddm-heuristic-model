@@ -162,7 +162,7 @@ def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_ti
 
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=25 # Total amount of events
+NUM_EVENTS=1 # Total amount of events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.04 # Internal noise - timer activation
 LEARNING_RATE=.99 # Default learning rate for timers
@@ -201,17 +201,15 @@ timer=TM(1,200)
 ax1 = plt.subplot(211)
 ax2 = plt.subplot(212)
 
-timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to each event type
+timer.eventDict()[0] = np.arange(0,10).tolist() # Initialize ten ramps to first event type
 free_indices = np.arange(10,200) # Establish free ramps
 
 # Timers are allocated to an event type based on the timer's eventDict object
 # eventDict takes in an event type as a key and gives an array of timer indices 
 # for that object as the value
-
 first_event = True
 
 # At each event e_i
-
 # From all not idle ramps
 # Ramps with terminating event s_2 = e_i or s_2 is unassigned 
 # Random collection of N ramps are updated for interval s1 -> s2 = e_i
@@ -221,6 +219,13 @@ first_event = True
 
 # If R ramps are between start and stop thresholds, respond
 for idx, event in enumerate(events_with_type):
+    # Two cases: 
+        # First Event
+            # Start at zero and look at the next event
+        # Middle Event
+            # Start at prior event and look at next event
+        
+        
     house_light = True
     prev_event = 0
     event_time = event[0]
@@ -234,7 +239,7 @@ for idx, event in enumerate(events_with_type):
     
     if stimulus_type not in timer.stimulusDict():
         # Allocate a new timer for this event type 
-        # need protection if we run out of timers 
+        # TODO: need protection if we run out of timers 
         # stimulus type is A, B, C 
         timer.stimulusDict()[stimulus_type] = free_indices[:10].tolist()
         free_indices = free_indices[11:]
@@ -252,27 +257,29 @@ for idx, event in enumerate(events_with_type):
         event_time = events_with_type[idx][0] + .1
         next_event = events_with_type[idx+1][0]
         # plot house light indicator
-        ax1.plot([0, events_with_type[idx][0]], [1.9, 1.9], 'k-', lw=4)
-        ramps_stim_index = np.arange(0,len(timer.timers))
+        # ax1.plot([0, events_with_type[idx][0]], [1.9, 1.9], 'k-', lw=4)
         
+        # All 200 ramps activate
+        ramps_stim_index = np.arange(0,len(timer.timers))
+        # timer activation from 0.1 to next event
         timer_value = activationAtIntervalEnd(timer, ramps_stim_index, next_event, NOISE)
-        # plot the full step by step process
-        # use np.where to find where it goes above and below threshold
-        # keep track of how many are in response range
         
         start_threshold_times = start_threshold_time(timer_value, event_time)
         start_threshold_times.sort()
         start_threshold_times = np.vstack((start_threshold_times, np.ones(len(start_threshold_times)))).T
+        
         stop_threshold_times = stop_threshold_time(timer_value, event_time)
         stop_threshold_times.sort()
         stop_threshold_times = np.vstack((stop_threshold_times, (-1* np.ones(len(stop_threshold_times))))).T
+        
         start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times))
         start_stop_pairs = start_stop_pairs[start_stop_pairs[:, 0].argsort()]
+        print(start_stop_pairs)
         r = list(generate_responses(100))
         r.insert(0, event_time)
         r=list(np.cumsum(r))
         
-        plot_start=True
+        ri_start=True
         plot_end=True
     
         responses = []
@@ -287,23 +294,24 @@ for idx, event in enumerate(events_with_type):
         
         for jdx, time in enumerate(start_stop_pairs):
             k+=time[1]
-            
+            print("k: ",k,"time: ", time[0])
             # Generate all and cumsum instead of this
-            s =  r.pop(0)
+            s =  r.pop(0) + event_time
             if k >= K and s:
-                if plot_start:
-                    plot_start=False
-                    #ax1.vlines(time[0], 0, Y_LIM, color="green")
+                if ri_start:
+                    rs=time
+                    ri_start=False
+                
                 if s<next_event:    
                     responses.append(s)
-                    print(responses)
-                    print("next event: ",next_event)
+                    #print(responses)
+                    #print("next event: ",next_event)
             #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
        
-        ax1.plot(responses, np.ones(len(responses)), '.')
+        ax1.plot(responses, np.ones(len(responses)), 'x')
         
         
-        ax1.plot(responses, np.ones(len(responses)), '.')
+        
         
         # for t in range(start_stop_pairs[0][0], start_stop_pairs[-1][1], dt):
             
@@ -340,7 +348,7 @@ for idx, event in enumerate(events_with_type):
         if idx<len(events_with_type)-1:
             next_event = events_with_type[idx+1][0]
         avg_weight = np.mean(timer.timers[ramps_stim_index])
-        timer_value = activationAtIntervalEnd(timer, ramps_stim_index, event_time - events_with_type[idx-1][0], NOISE)
+        timer_value = activationAtIntervalEnd(timer, ramps_stim_index, event_time - prev_event, NOISE)
         
        
         #response_time = prev_event + generate_hit_time(avg_weight, RESPONSE_THRESHOLD, NOISE, dt)
@@ -356,17 +364,17 @@ for idx, event in enumerate(events_with_type):
             start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times))
             start_stop_pairs = start_stop_pairs[start_stop_pairs[:, 0].argsort()]
             
-            # This doesnt seem right
             r = list(generate_responses(100))
-            #r.insert(0, event_time)
             r=list(np.cumsum(r))
             
             plot_start=True
             plot_end=True
         
             responses = []
-            print(responses)
-            print("next event: ",next_event)
+           # print(responses)
+           # print("prev event: ", prev_event)
+           # print("event time: ", event_time)
+           # print("next event: ", next_event)
             
             k = 0
             threshold_reached=True
@@ -391,7 +399,7 @@ for idx, event in enumerate(events_with_type):
                         #ax1.vlines(time[0], 0, Y_LIM, color="green")
                     if s<next_event and s>prev_event:    
                         responses.append(s)
-                        print(s)
+                        #print(s)
                 #(k_count >= K and r and s<stop_threshold_times[-1]) and responses.append(s)
             
             ax1.plot(responses, np.ones(len(responses)), '.')
@@ -437,7 +445,7 @@ for idx, event in enumerate(events_with_type):
         #print("\n")
         if Y_LIM>1:
             plt.hlines(1, 0, event_time, alpha=0.2, color='black')
-      
+        print("shouldnt print")
         ax1.set_ylim([0,Y_LIM])
         ax1.set_xlim([0,event_time])
         ax1.set_ylabel("Activation")

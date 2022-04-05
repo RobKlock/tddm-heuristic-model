@@ -154,11 +154,13 @@ def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_ti
                     timer.setTimerWeight(timer_weight, idx)
 
 def respond(timer_value, event_time, next_event, ax1, idx):
-    start_threshold_times = start_threshold_time(timer_value, next_event)
+    start_threshold_times = start_threshold_time(timer_value, next_event-event_time)
+    start_threshold_times += event_time
     start_threshold_times.sort()
     start_threshold_times = np.vstack((start_threshold_times, np.ones(len(start_threshold_times)))).T
     
-    stop_threshold_times = stop_threshold_time(timer_value, next_event)
+    stop_threshold_times = stop_threshold_time(timer_value, next_event-event_time)
+    stop_threshold_times += event_time
     stop_threshold_times.sort()
     stop_threshold_times = np.vstack((stop_threshold_times, (-1* np.ones(len(stop_threshold_times))))).T
     
@@ -195,8 +197,13 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     
     for response_period in response_periods:
         responses.extend([i for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
+        # ax1.vlines(response_period[0], 0,Y_LIM, color="green")
+        # ax1.vlines(response_period[1], 0,Y_LIM, color="red")
+        # ax1.text(response_period[0],1.5,str(idx))
+        # ax1.text(response_period[1],1.5,str(idx))
     
     ax1.plot(responses, np.ones(len(responses)), 'x') 
+    responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
 
@@ -277,9 +284,6 @@ for idx, event in enumerate(events_with_type[:-1]):
         free_indices = free_indices[11:]
     
     ramps_stim_index = timer.stimulusDict()[stimulus_type]
-    
-    # All 200 ramps activate
-    
     timer_value = activationAtIntervalEnd(timer, ramps_stim_index, next_event - event_time, NOISE)    
     for i in timer_value:
         ax1.plot([event_time,next_event], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)
@@ -294,7 +298,10 @@ for idx, event in enumerate(events_with_type[:-1]):
         for i in free_timers_vals:
             ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
     ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
-    
+    if idx < NUM_EVENTS - 1:
+            ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
+    else:
+        ax1.text(event[0],2.1,'End')
 
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])

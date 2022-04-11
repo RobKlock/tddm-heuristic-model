@@ -15,6 +15,7 @@ from labellines import labelLine, labelLines
 from scipy.stats import invgauss   
 import matplotlib.colors as mcolors
 
+
 def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
     act = timer.timers[ramp_index] * interval_length
     for i in range (0, len(act)):
@@ -55,7 +56,7 @@ def stop_threshold_time(act_at_interval_end, interval_length):
     
 def generate_responses(interval_length):
     num_samples = int(interval_length / dt)
-    responses = np.random.exponential(1, num_samples)
+    responses = np.random.exponential(4, num_samples)
     return responses
     
     
@@ -132,11 +133,11 @@ def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_ti
             continue
         flip = random.random()
        
-        if flip >=.5:
+        if flip >=0:
             # only update timer for those that keep track of next stim type
            # print("event dict timer:", timer.eventDict())
             # event_dict=timer.eventDict()
-            if int(next_stimulus_type) in timer.stimulusDict().keys() and (idx in timer.stimulusDict()[int(next_stimulus_type)]):
+            if int(stimulus_type) in timer.stimulusDict().keys() and (idx in timer.stimulusDict()[int(stimulus_type)]):
                 if value > 1:
                     ''' Early Update Rule '''
                     #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
@@ -206,6 +207,34 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
+def multi_stim_update_rule(timer_values, timer, timer_indices, start_time, end_time, stimulus_type, event_type, next_stimulus_type, sequence_code, v0=1.0, z = 1, bias = 1, plot = False):
+    # Frozen timers arent updated
+    for idx, value in zip(timer_indices, timer_values):
+        if idx in timer.frozen_ramps:
+            continue
+        flip = random.random()
+       
+        if flip >=.5:
+            # only update timer for those that keep track of next stim type
+            
+            # event_dict=timer.eventDict()
+            if int(next_stimulus_type) in timer.stimulusDict().keys() and (idx in timer.stimulusDict()[int(next_stimulus_type)]):
+                if value > 1:
+                    ''' Early Update Rule '''
+                    #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                    timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    plt.grid('on')
+        
+                    if plot:
+                        plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                            
+                    timer.setTimerWeight(timer_weight, idx)
+                    
+                else:
+                    ''' Late Update Rule '''
+                    timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    timer.setTimerWeight(timer_weight, idx)
+
 
 # A ramp has a start-event s_1 (last reset), weight w (inf)
 # A timer has start-event s_1, weight w, and stop event s_2, can be off
@@ -213,25 +242,26 @@ def respond(timer_value, event_time, next_event, ax1, idx):
 
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
-NUM_EVENTS=10# Total amount of events
+NUM_EVENTS=16# Total amount of events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.04 # Internal noise - timer activation
-LEARNING_RATE=.99 # Default learning rate for timers
+NOISE=0.01 # Internal noise - timer activation
+LEARNING_RATE=1 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
-K = 3 # Amount of timers that must be active to respond
-START_THRESHOLD=.9
-STOP_THRESHOLD=1.1
+K = 5 # Amount of timers that must be active to respond
+START_THRESHOLD=.5
+STOP_THRESHOLD=1.5
 TIMER_THRESHOLD=1 
 PLOT_FREE_TIMERS=False
-
+recorded_responses=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
-# HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(14, 25, 1)] + [*range(30, 40, 1)] + [*range(42, NUM_EVENTS, 1)]
-HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)]
+HOUSE_LIGHT_ON= [*range(0, 5, 1)] + [*range(10, 15, 1)] + [*range(20, 40, 1)] + [*range(42, NUM_EVENTS, 1)]
+#HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)]
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
-events_with_type = np.insert(events_with_type, 0, [0,0,0], axis=0)
+#events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
+events_with_type = np.asarray([[50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+events_with_type = np.insert(events_with_type, 0, [0,1,1], axis=0)
 NUM_EVENTS += 1
 
 events = np.zeros(NUM_EVENTS)
@@ -256,7 +286,6 @@ free_indices = np.arange(0,200) # Establish free ramps
 # Timers are allocated to an event type based on the timer's eventDict object
 # eventDict takes in an event type as a key and gives an array of timer indices 
 # for that object as the value
-first_event = True
 
 # Ramps with terminating event s_2 = e_i or s_2 is unassigned 
 # Random collection of N ramps are updated for interval s1 -> s2 = e_i
@@ -268,15 +297,18 @@ for idx, event in enumerate(events_with_type[:-1]):
             # Start at zero and look at the next event
         # Middle Event
             # Start at prior event and look at next event   
-    house_light = True
-    first_event=False  
+   
+    house_light = idx in HOUSE_LIGHT_ON
+    
     event_time = event[0]
     event_type = int(event[1])
     stimulus_type = int(event[2])
     next_event = events_with_type[idx+1][0]
     next_stimulus_type=int(events_with_type[idx+1][2])
-        
+    print(idx)
+
     if stimulus_type not in timer.stimulusDict():
+        print("stim type not found")
         # Allocate a new timer for this event type 
         # TODO: need protection if we run out of timers 
         # stimulus type is A, B, C 
@@ -284,28 +316,81 @@ for idx, event in enumerate(events_with_type[:-1]):
         free_indices = free_indices[11:]
     
     ramps_stim_index = timer.stimulusDict()[stimulus_type]
-    timer_value = activationAtIntervalEnd(timer, ramps_stim_index, next_event - event_time, NOISE)    
-    for i in timer_value:
-        ax1.plot([event_time,next_event], [0, i], linestyle = "dashed",  c=colors[stimulus_type], alpha=0.5)
-        ax1.plot([next_event], [i], marker='o',c=colors[stimulus_type], alpha=0.2) 
+    ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
+    if house_light:
+        ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)
+        timer_value = activationAtIntervalEnd(timer, ramps_stim_index, next_event - event_time, NOISE)    
+        for i in timer_value:
+            ax1.plot([event_time,next_event], [0, i], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+            ax1.plot([next_event], [i], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+        
+        
+        responses = respond(timer_value, event_time, next_event, ax1, idx)
+        try:
+            recorded_response = responses[-1]
+            recorded_responses.append(recorded_response)
+        except:
+            recorded_response = 0
+            recorded_responses.append(recorded_response)
+        # midpoint of response period 
+        # what if there are two responding periods
+        
+        free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
+        coin_flip_update_rule(timer_value, timer, ramps_stim_index, event_time, next_event, stimulus_type, event_type, next_stimulus_type, plot= False)
+        
+        # Look forward to all other intervals before house light turns off and start updating weights
+        curr_interval_idx = HOUSE_LIGHT_ON.index(idx)
+        next_house_light_idx = idx + 2
+        house_light_interval = True
+        sequence_code=''
+        while house_light_interval:
+            # If the next interval is in the house light period
+            if next_house_light_idx in HOUSE_LIGHT_ON: 
+                next_house_light_stimulus = events_with_type[next_house_light_idx][2]
+                next_event_o_time=events_with_type[next_house_light_idx][0]
+                sequence_code = sequence_code + str(int(stimulus_type)) + str(int(next_house_light_stimulus))
+                
+                if sequence_code not in timer.stimulusDict():
+                    # event type is really interval type (0-8) or A->B, B->A, etc
+                    timer.stimulusDict()[sequence_code] = free_indices[:10].tolist()
+                    free_indices = free_indices[11:]
+                
+                event_timer_index = timer.stimulusDict()[stimulus_type]
+                timer_value = activationAtIntervalEnd(timer, event_timer_index, event_time, NOISE)
+                
+                for i in timer_value:
+                    ax1.plot([event_time,next_event_o_time], [0, i], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                    ax1.plot([next_event_o_time], [i], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                multi_stim_update_rule(timer_value, timer, timer.stimulusDict()[sequence_code], event_time, next_event_o_time, stimulus_type, event_type, next_stimulus_type, sequence_code, plot= False)
+                next_house_light_idx+=1
+            else:
+                house_light_interval=False
+        
+        if PLOT_FREE_TIMERS:
+            for i in free_timers_vals:
+                ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
     
-    responses = respond(timer_value, event_time, next_event, ax1, idx)
-    free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
-    coin_flip_update_rule(timer_value, timer, ramps_stim_index, event_time, next_event, stimulus_type, event_type, next_stimulus_type, plot= False)
     
-    
-    if PLOT_FREE_TIMERS:
-        for i in free_timers_vals:
-            ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)
-    ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[4 + int(event[2])])
     if idx < NUM_EVENTS - 1:
             ax1.text(event[0],2.1,ALPHABET_ARR[int(events_with_type[idx+1][2])])
     else:
         ax1.text(event[0],2.1,'End')
+        
+        
+events = events_with_type[:-1,0]
+#MSE = np.square(np.subtract(events,recorded_responses)).mean()
 
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")
 ax1.set_xlabel("Time")
 ax1.grid('on')
+ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
+ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
+
+# ax2.plot(np.arange(0,NUM_EVENTS,1), MSE)
+# ax2.set_xlim([0,NUM_EVENTS])
+# ax2.set_ylabel("Sq Error")
+# ax2.set_xlabel("Event #")
+# ax2.grid('on')
                 

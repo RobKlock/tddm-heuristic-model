@@ -215,7 +215,7 @@ def multi_stim_update_rule(timer_values, timer, timer_indices, stimulus_type, ev
         flip = random.random()
        
         # coin flip update
-        if flip >=0:
+        if flip >=0.2:
         
             # event_dict=timer.eventDict()
             if int(stimulus_type) in timer.stimulusDict().keys():
@@ -251,9 +251,10 @@ TIMER_THRESHOLD=1
 PLOT_FREE_TIMERS=False
 recorded_responses=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
+NEW_TIMERS=15
 
 ALPHABET_ARR = ['A','B','C','D','E','F','G']
-HOUSE_LIGHT_ON= [*range(0, 3, 1)] + [*range(6, 9, 1)] + [*range(10, 13, 1)] + [*range(42, NUM_EVENTS, 1)]
+HOUSE_LIGHT_ON= [*range(0, 4, 1)] + [*range(6, 9, 1)] + [*range(10, 13, 1)] + [*range(42, NUM_EVENTS, 1)]
 #HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)]
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
@@ -288,6 +289,7 @@ free_indices = np.arange(0,200) # Establish free ramps
 # Random collection of N ramps are updated for interval s1 -> s2 = e_i
 
 # At each event e_i
+first_event = True
 for idx, event in enumerate(events_with_type[:-1]):    
     # Two cases: 
         # First Event
@@ -309,8 +311,8 @@ for idx, event in enumerate(events_with_type[:-1]):
         # Allocate a new timer for this event type 
         # TODO: need protection if we run out of timers 
         # stimulus type is A, B, C 
-        timer.stimulusDict()[stimulus_type] = free_indices[:10].tolist()
-        free_indices = free_indices[11:]
+        timer.stimulusDict()[stimulus_type] = free_indices[:NEW_TIMERS].tolist()
+        free_indices = free_indices[NEW_TIMERS+1:]
     
     ramps_stim_index = timer.stimulusDict()[stimulus_type]
     ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
@@ -333,18 +335,17 @@ for idx, event in enumerate(events_with_type[:-1]):
         # what if there are two responding periods
         
         free_timers_vals = activationAtIntervalEnd(timer, free_indices, next_event, NOISE)
-        #coin_flip_update_rule(timer_value, timer, ramps_stim_index, event_time, next_event, stimulus_type, event_type, next_stimulus_type, plot= False)
+        first_event and coin_flip_update_rule(timer_value, timer, ramps_stim_index, event_time, next_event, stimulus_type, event_type, next_stimulus_type, plot= False)
         
         # Look forward to all other intervals before house light turns off and start updating weights
         curr_interval_idx = HOUSE_LIGHT_ON.index(idx)
         next_house_light_idx = idx + 2
         house_light_interval = True
         sequence_code=''
-        while house_light_interval:
+        while house_light_interval and not first_event:
             
             # If the next interval is in the house light period
             if next_house_light_idx-1 in HOUSE_LIGHT_ON: 
-                
                 next_event_o_time = events_with_type[next_house_light_idx][0]
                 print(f'timing from {event_time} to {next_event_o_time}...')
                 # Can use sequence code if we want to handle A->B->C as a distinct event type
@@ -357,12 +358,12 @@ for idx, event in enumerate(events_with_type[:-1]):
                     ax1.plot([next_event_o_time], [i], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
                
                 
-                multi_stim_update_rule(timer_value, timer, ramps_stim_index, stimulus_type, event_type)
+                multi_stim_update_rule(hl_timer_value, timer, ramps_stim_index, stimulus_type, event_type)
                 
                 next_house_light_idx+=1
             else:
                 house_light_interval=False
-        
+        first_event=False
         if PLOT_FREE_TIMERS:
             for i in free_timers_vals:
                 ax1.plot([0,event_time], [0, i], linestyle = "dashed", c='grey', alpha=0.5)

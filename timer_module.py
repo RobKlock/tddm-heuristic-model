@@ -107,7 +107,10 @@ class TimerModule:
         self.score = 0.0
         self.learning_rate = 1
         self.event_dict = {}
-        self.stimulus_dict = {}
+        self.stimulus_dict = {} # timers wit s_1 = e
+        self.terminating_dict= {} # timers with s_2 = e
+        
+        self.free_ramps = np.arange(0,n_timers)
     
     def setScore(self, ramp_index, score):
         self.scores[ramp_index]= float (score)
@@ -126,6 +129,9 @@ class TimerModule:
     
     def stimulusDict(self):
        return self.stimulus_dict
+   
+    def terminatingDict(self):
+        return self.terminating_dict
     
     def ramps(self):
         return self.timers

@@ -107,6 +107,13 @@ class TimerModule:
         self.score = 0.0
         self.learning_rate = 1
         self.event_dict = {}
+        # big matrix 
+        
+        # or just use a  n_timers length list that keeps track of terminating event
+        # use 0,1,NaN
+        # use np.where
+        # 3 columns
+        # slope of ramp, assigned or not, initiaing events, terminating event, 
         self.stimulus_dict = {} # timers wit s_1 = e
         self.terminating_dict= {} # timers with s_2 = e
         

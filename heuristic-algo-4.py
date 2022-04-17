@@ -218,27 +218,25 @@ def multi_stim_update_rule(timer_values, timer, timer_indices, next_stimulus_typ
         flip = random.random()
         
         # coin flip update
-        if flip >=.2:
-            if next_stimulus_type not in timer.terminatingDict():
-                timer.terminatingDict()[next_stimulus_type] = [idx]
+        if flip >=.5:
+
+            if timer.terminating_events[idx] == next_stimulus_type:
+                if value > 1:
+                    ''' Early Update Rule '''
+                    #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
+                    
+                    timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    plt.grid('on')
+                    
+                    
+                    timer.setTimerWeight(timer_weight, idx)
+                    
+                else:
+                    ''' Late Update Rule '''
+                    timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                    timer.setTimerWeight(timer_weight, idx)
             else:
-                # check to see if a terminating event has already been assigned
-                timer.terminatingDict()[next_stimulus_type].append(idx)
-            
-            if value > 1:
-                ''' Early Update Rule '''
-                #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
-                
-                timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
-                plt.grid('on')
-                
-                
-                timer.setTimerWeight(timer_weight, idx)
-                
-            else:
-                ''' Late Update Rule '''
-                timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
-                timer.setTimerWeight(timer_weight, idx)
+                timer.terminating_events[idx] = next_stimulus_type
 
 
 # A ramp has a start-event s_1 (last reset), weight w (inf)

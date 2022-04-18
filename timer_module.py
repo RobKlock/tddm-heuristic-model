@@ -115,6 +115,7 @@ class TimerModule:
         # 3 columns
         # slope of ramp, assigned or not, initiaing events, terminating event, 
         self.terminating_events = np.empty(n_timers)
+        self.initiating_events = np.empty(n_timers)
         self.stimulus_dict = {} # timers wit s_1 = e
         self.terminating_dict= {} # timers with s_2 = e
         

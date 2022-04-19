@@ -358,28 +358,29 @@ for idx, event in enumerate(events_with_type[:-1]):
                 # get activations of active ramps at next event time
                 # initiating_event_indicies = np.argwhere(timer.initiating_events == stimulus_type)
                 
-                active_with_terminating_event_indices = np.argwhere(timer.terminating_events[initiating_event_ramps] == next_stimulus_o_type)[:,0]
-                
-                print(f'active {active_with_terminating_event_indices}')
-                hl_timer_value = activationAtIntervalEnd(timer, active_with_terminating_event_indices, next_event_o_time - event_time, NOISE)
+               #print(f'active {active_with_terminating_event_indices}')
+                # hl_timer_value = activationAtIntervalEnd(timer, active_with_terminating_event_indices, next_event_o_time - event_time, NOISE)
                 
                 # need to change active ramps after this interval
                 #initiating_event_ramps= np.argwhere(timer.initiating_events == stimulus_type)
                 
                 
-                for i in hl_timer_value:
+                for i in initiating_event_ramps:
                 #         if i in timer.free_ramps:
                 #             ax1.plot([event_time,next_event_o_time], [0, i], linestyle = "dashed",  c='g', alpha=0.3)
                 #             ax1.plot([next_event_o_time], [i], marker='o',c='g', alpha=0.2) 
                 #         else:
-                    ax1.plot([event_time,next_event_o_time], [0, i], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
-                    ax1.plot([next_event_o_time], [i], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                    if timer.terminating_events[i] == next_stimulus_o_type:
+                        val = activationAtIntervalEnd(timer, [i], next_event_o_time - event_time, NOISE)
+                        ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                        ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        update_and_reassign(timer, val, [i], next_stimulus_o_type)
                 #         # ax1.text(next_event_o_time-5,i, next_event_o_time)
                 
                 # # responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
                 
                 # update and reassign ramps
-                update_and_reassign(timer, hl_timer_value, active_with_terminating_event_indices, next_stimulus_o_type)
+              
                 
                 next_house_light_idx+=1
             

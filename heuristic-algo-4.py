@@ -239,8 +239,9 @@ def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, 
                    
                 
                 if timer.initiating_events[idx] == stimulus_type and timer.terminating_events[idx] == next_stimulus_type:
-                    timer.setTimerWeight(timer_weight, idx)
-                    timer.terminating_events[idx]= next_stimulus_type
+                    if flip>=.9:
+                        timer.setTimerWeight(timer_weight, idx)
+                        timer.terminating_events[idx]= next_stimulus_type
                
                 if idx in timer.free_ramps:
                     timer.setTimerWeight(timer_weight, idx)
@@ -279,7 +280,7 @@ ALPHABET_ARR = ['A','B','C','D','E','F','G']
 events_with_type = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
                                [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
 NUM_EVENTS = len(events_with_type)
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(6, 8, 1)] #  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
 observed_stim_type =  [False] * N_EVENT_TYPES
 #events_with_type = np.insert(events_with_type, 0, [0,1,1], axis=0)
@@ -377,22 +378,26 @@ for idx, event in enumerate(events_with_type[:-1]):
                 
                 hl_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_event_o_time - event_time, NOISE)
                 # update and reassign ramps                
+                update_and_reassign(timer, hl_timer_value, active_ramp_indices, next_stimulus_o_type, stimulus_type)
                 for i, val in zip(active_ramp_indices, hl_timer_value):
                 #         if i in timer.free_ramps:
                 #             ax1.plot([event_time,next_event_o_time], [0, i], linestyle = "dashed",  c='g', alpha=0.3)
                 #             ax1.plot([next_event_o_time], [i], marker='o',c='g', alpha=0.2) 
                 #         else
                     if timer.terminating_events[i] == next_stimulus_o_type and timer.initiating_events[i] == stimulus_type:
-                        ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
-                        ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        if val<STOP_THRESHOLD or i in timer.free_ramps:
+                            ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                        
+                        if val>START_THRESHOLD or i in timer.free_ramps:
+                            ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
                 
-                update_and_reassign(timer, hl_timer_value, active_ramp_indices, next_stimulus_o_type, stimulus_type)
+                
 
                 
                 
                 #         # ax1.text(next_event_o_time-5,i, next_event_o_time)
                 
-                # # responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
+                responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
               
                 
                 next_house_light_idx+=1

@@ -207,11 +207,12 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
-def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
+def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
     # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
             continue
+        
         
         flip = random.random()
         # coin flip update
@@ -221,26 +222,32 @@ def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, 
             - S2 = NA
         Pick N randomly and update them for the interval s1->s2=e_i
         """
-        
-        if flip >=.2:
-            # if the timer has the appropriate terminating event, update the weight
-            if timer.terminating_events[idx] == next_stimulus_type:
+        if timer.terminating_events[idx] == -1:
+            if flip >=.75:
+                # if the timer has the appropriate terminating event, update the weight
+               
                 if value > 1:
                     ''' Early Update Rule '''
                     #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
-                    
                     timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
                     plt.grid('on')
-                    timer.setTimerWeight(timer_weight, idx)
+                    # timer.setTimerWeight(timer_weight, idx)
                     
                 else:
                     ''' Late Update Rule '''
                     timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
+                   
+                
+                if timer.initiating_events[idx] == stimulus_type and timer.terminating_events[idx] == next_stimulus_type:
                     timer.setTimerWeight(timer_weight, idx)
-           
-            elif np.isinf(timer.terminating_events[idx]):
-                timer.terminating_events[idx] = next_stimulus_type
-                timer.free_ramps = np.delete(timer.free_ramps, idx)
+                    timer.terminating_events[idx]= next_stimulus_type
+               
+                if idx in timer.free_ramps:
+                    timer.setTimerWeight(timer_weight, idx)
+                    timer.free_ramps = np.delete(timer.free_ramps, np.where(timer.free_ramps == idx))
+                    timer.initiating_events[idx] = stimulus_type
+                    timer.terminating_events[idx] = next_stimulus_type
+                
             
 
 
@@ -272,7 +279,7 @@ ALPHABET_ARR = ['A','B','C','D','E','F','G']
 events_with_type = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
                                [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
 NUM_EVENTS = len(events_with_type)
-HOUSE_LIGHT_ON= [*range(0, 4, 1)] + [*range(6, 10, 1)] #  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(6, 8, 1)] #  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
 observed_stim_type =  [False] * N_EVENT_TYPES
 #events_with_type = np.insert(events_with_type, 0, [0,1,1], axis=0)
@@ -305,6 +312,7 @@ ax2 = plt.subplot(212)
 
 # At each event e_i
 first_event = True
+new_ramps_idx = 0
 for idx, event in enumerate(events_with_type[:-1]):    
     # Two cases: 
         # First Event
@@ -313,7 +321,7 @@ for idx, event in enumerate(events_with_type[:-1]):
             # Start at prior event and look at next event   
    
     house_light = idx in HOUSE_LIGHT_ON
-    
+    new_stim = False
     event_time = event[0]
     event_type = int(event[1])
     stimulus_type = int(event[2])
@@ -321,23 +329,25 @@ for idx, event in enumerate(events_with_type[:-1]):
     next_stimulus_type=int(events_with_type[idx+1][2])
     
 
-    if stimulus_type not in timer.stimulusDict():
-        print("stim type not found")
-        # Allocate a new timer for this event type 
-        # TODO: need protection if we run out of timers 
-        # stimulus type is A, B, C 
-        timer.stimulusDict()[stimulus_type] = timer.free_ramps[:NEW_TIMERS].tolist()
-        timer.initiating_events[:NEW_TIMERS] = stimulus_type
-        timer.free_ramps = timer.free_ramps[NEW_TIMERS+1:]
+    # if stimulus_type not in timer.stimulusDict():
+    #     new_stim = True
+       
+    #     # Allocate a new timer for this event type 
+    #     # TODO: need protection if we run out of timers 
+    #     # stimulus type is A, B, C 
+        
+    #     timer.stimulusDict()[stimulus_type] = timer.free_ramps[:NEW_TIMERS].tolist()
+        
+    #     timer.initiating_events[new_ramps_idx:new_ramps_idx+NEW_TIMERS] = stimulus_type
+    #     #print(f'after initiating events: {timer.initiating_events}')
+    #     new_ramps_idx = NEW_TIMERS
+    #     timer.free_ramps = timer.free_ramps[NEW_TIMERS:]
     
     #print(timer.initiating_events)
-    
-    initiating_event_ramps = np.argwhere(timer.initiating_events == stimulus_type) #np.append(timer.stimulusDict()[stimulus_type], timer.free_ramps) 
-    
-    
+    # active_ramps = np.append(timer.free_ramps,
+
     #print(initiating_event_ramps)
-    if initiating_event_ramps.size == 0:
-        initiating_event_ramps = timer.free_ramps
+   
     
     ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
     if house_light:
@@ -350,36 +360,39 @@ for idx, event in enumerate(events_with_type[:-1]):
         while house_light_interval:
             # If the next interval is in the house light period
             if next_house_light_idx-1 in HOUSE_LIGHT_ON: 
+                # Get next event time and stimulus type
                 next_event_o_time = events_with_type[next_house_light_idx][0]
                 next_stimulus_o_type = events_with_type[next_house_light_idx][2]
+                
+                # ramps active by initiating event
+                initiating_active_indices = np.where(timer.initiating_events == stimulus_type)
                 
                 print(f'INNER timing from {event_time} to {next_event_o_time}...')
                 
                 # get activations of active ramps at next event time
                 # initiating_event_indicies = np.argwhere(timer.initiating_events == stimulus_type)
                 
-               #print(f'active {active_with_terminating_event_indices}')
-                # hl_timer_value = activationAtIntervalEnd(timer, active_with_terminating_event_indices, next_event_o_time - event_time, NOISE)
+                # ramps 'active' in this inter-trial
+                active_ramp_indices = np.append(initiating_active_indices, timer.free_ramps)
                 
-                # need to change active ramps after this interval
-                #initiating_event_ramps= np.argwhere(timer.initiating_events == stimulus_type)
-                
-                
-                for i in initiating_event_ramps:
+                hl_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_event_o_time - event_time, NOISE)
+                # update and reassign ramps                
+                for i, val in zip(active_ramp_indices, hl_timer_value):
                 #         if i in timer.free_ramps:
                 #             ax1.plot([event_time,next_event_o_time], [0, i], linestyle = "dashed",  c='g', alpha=0.3)
                 #             ax1.plot([next_event_o_time], [i], marker='o',c='g', alpha=0.2) 
-                #         else:
-                    if timer.terminating_events[i] == next_stimulus_o_type:
-                        val = activationAtIntervalEnd(timer, [i], next_event_o_time - event_time, NOISE)
+                #         else
+                    if timer.terminating_events[i] == next_stimulus_o_type and timer.initiating_events[i] == stimulus_type:
                         ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
                         ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
-                        update_and_reassign(timer, val, [i], next_stimulus_o_type)
+                
+                update_and_reassign(timer, hl_timer_value, active_ramp_indices, next_stimulus_o_type, stimulus_type)
+
+                
+                
                 #         # ax1.text(next_event_o_time-5,i, next_event_o_time)
                 
                 # # responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
-                
-                # update and reassign ramps
               
                 
                 next_house_light_idx+=1

@@ -89,8 +89,6 @@ class TimerModule:
     def __init__(self,timer_weight = 1,n_timers=1):
         self.timers=np.empty(n_timers)
         self.timers.fill(timer_weight)
-        self.terminating_events=np.empty(n_timers)
-        self.terminating_events.fill(-1)
         self.timer_weight=timer_weight
         self.active_ramps=[]
         # a list of indices
@@ -114,8 +112,8 @@ class TimerModule:
         # use np.where
         # 3 columns
         # slope of ramp, assigned or not, initiaing events, terminating event, 
-        self.terminating_events = np.empty(n_timers)
-        self.initiating_events = np.empty(n_timers)
+        self.terminating_events = np.full(n_timers, -1)
+        self.initiating_events = np.full(n_timers, -1)
         self.stimulus_dict = {} # timers wit s_1 = e
         self.terminating_dict= {} # timers with s_2 = e
         

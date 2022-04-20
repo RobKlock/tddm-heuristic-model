@@ -23,8 +23,8 @@ There are two ways to generate events. You can call the getSamples method from t
 You can also control when the house light is on. Set HOUSE_LIGHT_ON to be an array of event indices. Example: [0,1,2,5,6,7,8] means the house light will be on for the first three events, off, and back on for events 6-8. The house light determines when the timing model should stop timing intra-event durations (for example, A,B,C). 
 
 <h3> Building a timer </h4>
-Building a timer is as simple as calling the Timer Module object: <code> timer=TM(1,100) </code>. This generates a timer with 100 ramps, all initialized with weight=1. Weight is equivalent to the rate of accumulation in the Drift Diffusion Model
+Building a timer is as simple as calling the Timer Module object: <code>timer=TM(1,100)</code>. This generates a timer with 100 ramps, all initialized with weight=1. Weight is equivalent to the rate of accumulation in the Drift Diffusion Model
 
 <h3> Responding </h4>
 
-If you want responses similar to the beat the clock task, call the <code> respond </code> method.
+If you want responses similar to the beat the clock task, call the <code>respond</code> method.

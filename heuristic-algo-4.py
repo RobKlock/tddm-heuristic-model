@@ -255,6 +255,7 @@ def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, 
 # A ramp has a start-event s_1 (last reset), weight w (inf)
 # A timer has start-event s_1, weight w, and stop event s_2, can be off
 # Universal start threshold = 0.9, stop = 1.1. Timer threshold is 1
+''' Global variables '''
 
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)

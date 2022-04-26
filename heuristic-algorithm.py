@@ -4,6 +4,11 @@
 Created on Mon Apr  4 23:32:38 2022
 
 @author: rob klock
+
+
+# A ramp has a start-event s_1 (last reset), weight w (inf)
+# A timer has start-event s_1, weight w, and stop event s_2, can be off
+
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -259,15 +264,13 @@ def update_and_reassign(timer, timer_values, timer_indices, next_stimulus_type, 
                 ''' Late Update Rule '''
                 timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
             
-                
+def relative_to_absolute_event_time(relative_time_events):
+   absolute_time_events = relative_time_events   
+   for i in range (1,NUM_EVENTS):
+       absolute_time_events[i][0] = events_with_type[i-1][0] + events_with_type[i][0]
+   return absolute_time_events  
             
-
-
-# A ramp has a start-event s_1 (last reset), weight w (inf)
-# A timer has start-event s_1, weight w, and stop event s_2, can be off
-# Universal start threshold = 0.9, stop = 1.1. Timer threshold is 1
 ''' Global variables '''
-
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
 # NUM_EVENTS=17#  Total amount of events
@@ -276,34 +279,26 @@ NOISE=0.0009 # Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 5 # Amount of timers that must be active to respond
-START_THRESHOLD=.5
-STOP_THRESHOLD=1.2
-TIMER_THRESHOLD=1 
+START_THRESHOLD=.5 # Response start threshold
+STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
-recorded_responses=[]
+ERROR_ANALYSIS_RESPONSES=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
-NEW_TIMERS=20
+ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
 
-ALPHABET_ARR = ['A','B','C','D','E','F','G']
-
-#HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)]
+#HOUSE_LIGHT_ON = [*range(0,NUM_EVENTS+1,1)] # House light on for all events (not recommended for running)
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #events_with_type = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 events_with_type = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
                                [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
-NUM_EVENTS = len(events_with_type)
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+NUM_EVENTS = len(events_with_type) 
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,15, 1)] + [*range(16,19,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
-observed_stim_type =  [False] * N_EVENT_TYPES
-#events_with_type = np.insert(events_with_type, 0, [0,1,1], axis=0)
-# NUM_EVENTS += 1
 
 events = np.zeros(NUM_EVENTS)
 error_arr = np.zeros(NUM_EVENTS)
 
-# Make event_w_t in terms of absolute time
-for i in range (1,NUM_EVENTS):
-     events_with_type[i][0] = events_with_type[i-1][0] + events_with_type[i][0]
+events_with_type = relative_to_absolute_event_time(events_with_type)
 
 # Time axis for plotting        
 T = events_with_type[-1][0]
@@ -377,11 +372,11 @@ for idx, event in enumerate(events_with_type[:-1]):
                 #             ax1.plot([next_event_o_time], [i], marker='o',c='g', alpha=0.2) 
                 #         else
                     if timer.terminating_events[i] == next_stimulus_o_type and timer.initiating_events[i] == stimulus_type:
-                        if val<STOP_THRESHOLD or i in timer.free_ramps:
-                            ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                        #if val<STOP_THRESHOLD or i in timer.free_ramps:
+                        ax1.plot([event_time,next_event_o_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
                         
-                        if val>START_THRESHOLD or i in timer.free_ramps:
-                            ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        #if val>START_THRESHOLD or i in timer.free_ramps:
+                        ax1.plot([next_event_o_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
 
                 # Reset and contiue to the next event in the house light interval
                 next_house_light_idx+=1

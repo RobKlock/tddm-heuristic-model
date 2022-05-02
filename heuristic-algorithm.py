@@ -282,9 +282,19 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                 timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
             
 def relative_to_absolute_event_time(relative_time_events):
-   absolute_time_events = relative_time_events   
+   absolute_time_events = []   
    for i in range (1,NUM_EVENTS):
-       absolute_time_events[i][0] = relative_time_events[i-1][0] + relative_time_events[i][0]
+       relative_event = np.asarray(relative_time_events[i])
+       relative_time = relative_event[0]
+       prior_time = np.asarray(relative_time_events[i-1][0])
+       
+       abs_time = relative_time + prior_time
+       event_type = relative_event[1]
+       stim_type = relative_event[2]
+       
+       abs_event = [abs_time, event_type, stim_type]
+       
+       absolute_time_events.append(abs_event)
    return absolute_time_events  
             
 ''' Global variables '''
@@ -303,12 +313,15 @@ ERROR_ANALYSIS_RESPONSES=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
 
+NUM_EVENTS=10
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-#event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
+event_data = TM.getSamples(10, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
+event_data = relative_to_absolute_event_time(event_data)
+print(event_data)
 # [Event Time, Event Type, Stimulus Type]
-event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
-                               [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
-NUM_EVENTS = len(event_data) 
+#event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
+#                             [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+#NUM_EVENTS = len(event_data) 
 HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,15, 1)] + [*range(16,19,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
 error_arr = np.zeros(NUM_EVENTS)
@@ -319,6 +332,7 @@ T = event_data[-1][0]
 
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,100)
+
 
 ax1 = plt.subplot(211) # Subplot for timer activations and events
 ax2 = plt.subplot(212) # Subplot for error (not yet calculated)

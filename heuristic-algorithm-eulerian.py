@@ -354,7 +354,7 @@ early_2 = False
 stretched = False
 
 for i in range (0, data1.size):   
-    net_in = weights @ v if not stretched else stretch_weights @ v  
+    net_in = weights @ v
 
     # Transfer functions
     net_in[0] = sigmoid(l[0], data1[0][i] + net_in[0], bias[0])    
@@ -368,8 +368,56 @@ for i in range (0, data1.size):
     v_hist = np.concatenate((v_hist,v), axis=1)
     
     z = .99
-
-
+    
+    """=== Early Timer Update Rules ==="""
+    if (v[1] >= z) and timer_learn_1 == True:
+        early_1 = True
+        if i < round(events["pBA"]/dt):
+            if not stretched:
+                # We're still in the interval, so we keep updating
+                # Drift for PL assuming a slope of 1
+                drift = ((weights[1][0]) - bias[1] + .5) 
+                d_A = (- (drift ** 2)/z) * dt
+                weights[1][0] = weights[1][0] + d_A  
+            else:
+                drift = ((ramp_bias + stretch * (stretch_weights[1][0] - ramp_bias)) - bias[1] + .5)
+                d_A = (- (drift ** 2)/z) * dt
+                stretch_weights[1][0] = stretch_weights[1][0] + d_A  
+        else:
+            print("early")
+            timer_learn_1 = False
+            print(weights[1][0])
+    """=== Late Timer Update Rules ==="""                
+    if (v[1] > 0) and (timer_learn_1 == True) and (not early_1):
+        #         If we hit our target late
+        #         Do the late update
+        if not stretched:
+            timer_learn_1 = False
+            z = .99
+            Vt = net_in[1][-1]
+            v[2] = 1
+            # drift = (weights[1][0] - bias[1] + .5)
+            """=== LOOK HERE! Timer Update Rules ==="""
+            drift = ((weights[1][0] * v[0]) - bias[1] + .5)
+            d_A = drift * ((z-Vt)/Vt)
+            weights[1][0] = weights[1][0] + d_A
+            print("Timer 1 was late, interval 2 starting...")
+        #                print(weights[1][0])
+        #                print("late")
+        #                print("new weights", weights[1][0])
+        else: 
+            timer_learn_1 = False
+            z = .99
+            Vt = net_in[1][-1]
+            v[2] = 1
+            # drift = (weights[1][0] - bias[1] + .5)
+            """=== LOOK HERE! Timer Update Rules ==="""
+            drift = ((ramp_bias + stretch * (stretch_weights[1][0] - ramp_bias)) * v[0]) - bias[1] + .5
+            d_A = drift * ((z-Vt)/Vt)
+            stretch_weights[1][0] = stretch_weights[1][0] + d_A
+#                print(weights[1][0])
+#                print("late")
+#                print("new weights", stretch_weights[1][0])
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")

@@ -437,31 +437,33 @@ class TimerModule:
 # plt.hist(TimerModule.getSamples(num_samples=1000, num_normal=0, num_exp = 1, num_dists = 1), bins=40, color='black')
 # print(TimerModule.getSamples(num_samples=100, num_normal=3, num_exp = 0, num_dists = 3))
     # [relative_time, event_type, stimulus_type]
-    def getEvents(num_samples=1, num_normal = 2, num_exp = 0, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
+    def getEvents(num_samples=1, num_normal = 2, num_exp = 0, deviation=1, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
         num_event_types = num_normal + num_exp
         
         P = np.random.rand(num_event_types,num_event_types)
-        P = P/P.sum(axis=1, keepdims=True)
+        distribution_weights = P/P.sum(axis=1, keepdims=True) # Probabilities of each event type
+        
         # D = np.random.randint(2,size=(num_event_types,num_event_types))
-        T = np.random.randint(20,50, size=(num_event_types,num_event_types))
-        S = np.full((num_event_types, num_event_types), 20)
-        D=np.ones((num_event_types,num_event_types))
-        NUM_DISTS = num_event_types * num_event_types
-        DIST_INDICES = np.arange(NUM_DISTS)
-        DIST_INDICES.shape=(num_event_types,num_event_types)
+        centers = np.random.randint(20,50, size=(num_event_types,num_event_types)) # locs, or centers of each distribution
+        deviations = np.full((num_event_types,num_event_types), deviation) # deviations of each distribution
+        
+        NUM_DISTS = num_event_types * num_event_types # number of distributions
+        DIST_INDICES = np.arange(NUM_DISTS) 
+        DIST_INDICES.shape=(num_event_types,num_event_types) # convert indices into square matrix
         
         
-        state = np.random.randint(num_event_types)
-        samples = np.empty([num_samples,3])
+        state = np.random.randint(num_event_types) # current state
+        samples = np.empty([num_samples,3]) # initialize array of samples 
         
         for i in range(num_samples):
-            next_state = np.random.multinomial(1,P[state,:])
-            next_state = np.where(next_state==1)[0][0]
+            next_state = np.random.multinomial(1,distribution_weights[state,:]) # get next state according to distribution weights
+            next_state = np.where(next_state==1)[0][0] # index location of distribution
             # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
-            time = (np.random.normal(T[state,next_state], 10,1) * D[state,next_state]) #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
+            time = (np.random.normal(centers[state,next_state], 10,1) * deviations[state,next_state]) # sample from normal dist to get time
+            #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
             
-            samples[i] = [time[0],DIST_INDICES[state,next_state],state]
-            state = next_state
+            samples[i] = [time[0],DIST_INDICES[state,next_state],state] # add sample in form [relative time, event type, stimulus type]
+            state = next_state # proceed to next state
         
         return samples
 '''

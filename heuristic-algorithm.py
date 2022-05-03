@@ -23,23 +23,48 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import sys
-import random
+import random # TODO: Just use np.random instead of random.random
+# TODO: Specify the seed so random things are generated again
+
 from timer_module import TimerModule as TM
 from labellines import labelLine, labelLines
 from scipy.stats import invgauss   
 import matplotlib.colors as mcolors
+import networkx as nx
+import time
 
 
+''' code review notes
+# Define all the parameters
+# PEP 8 Standard 
+
+Include datatypes in method comments
+specifically look out for numpy: single values, arrays, etc
+
+Class for DDM 
+Update rules and activations would be in that class
+Step function that does all the updates in the class
+'''
 def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
     # Simulate DDM process for activation amount
+    # Change act to activation
     act = timer.timers[ramp_index] * interval_length
     for i in range (0, len(act)):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     return act
 
+
+# Generate when it will cross threshold
+# Paramters:
+#   weight: scalar,
+#   threshold: scalar,
+#   noise: scalar,
 def generate_hit_time(weight, threshold, noise, dt, plot=False):   
     # Alternative method for hitting time
     T = int(((threshold/weight)+50)/dt)
+   
+    # TODO: Change to np.random.normal((loc=0, scale=1, size=T))
+    # Rename to be clearer
     arr = np.random.normal(0,1,T) * noise * np.sqrt(dt)
     
     drift_arr = np.ones(T) * weight * dt
@@ -62,6 +87,7 @@ def generate_hit_time(weight, threshold, noise, dt, plot=False):
 
 def start_threshold_time(act_at_interval_end, interval_length):
     # Time of ramp hitting start threshold
+    # TODO: get rid of magic numbers here
     angle = np.arctan(act_at_interval_end/interval_length)
     beta = 3.14159 - (1.5708 + angle)
     return START_THRESHOLD * np.tan(3.14159 - (1.5708 + angle))
@@ -74,13 +100,16 @@ def stop_threshold_time(act_at_interval_end, interval_length):
     
 def generate_responses(interval_length):
     num_samples = int(interval_length / dt)
-    responses = np.random.exponential(4, num_samples)
+    responses = np.random.exponential(1, num_samples)
     return responses
     
     
 
 def lateUpdateRule(vt, timer_weight, learning_rate, v0=1.0, z = 1, bias = 1):
     """
+    TODO: these are out of order
+    Include data types in each of these
+    
     Parameters
     ----------
     v0: activation of IN unit
@@ -183,6 +212,7 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times))
     start_stop_pairs = start_stop_pairs[start_stop_pairs[:, 0].argsort()]
 
+    # TODO: Preallocate memory instead of initializing an empty list
     responses = []
     response_periods = []
     k = 0
@@ -219,7 +249,8 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
-def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
+# Use timer indices in Timer object instead of passing them in parameters
+def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, ramp_graph, ax2, external_idx, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
     # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
@@ -227,7 +258,32 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         
         # Generate coin flip for random update
         flip = random.random()
-       
+
+        
+    
+        if idx in timer.free_ramps:
+            stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
+            next_stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
+            if external_idx == 0:
+                ax2.plot([0], [stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+                ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+                ax2.plot([0,2], [stim_type_y_plot_val, idx],c='green', alpha=0.5)
+                ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c='green', alpha=0.5)
+            
+            else:
+                stim_type_y_plot_val = (NUM_RAMPS/2) + (stimulus_type * (NUM_RAMPS/4))                 
+                next_stim_type_y_plot_val = (NUM_RAMPS/2) + (next_stimulus_type * (NUM_RAMPS/4))
+                ax2.plot([0], [stim_type_y_plot_val], marker='o',c=colors[stimulus_type], alpha=0.2) 
+                ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                ax2.plot([0,2], [stim_type_y_plot_val, idx],c=colors[stimulus_type], alpha=0.5)
+                ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c=colors[next_stimulus_type], alpha=0.5)
+            
+            ax2.plot([2], [idx], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+            
+            
+        filename=f'ramp-graph-frames/ramps-{time.time()}.png'
+        fig.savefig(filename)     
+        
         """ 
         From all the ramps not idle who have either:
             - S2=e_i and start<act<stop
@@ -236,7 +292,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         """
         # If a timer is unassigned
         if timer.terminating_events[idx] == -1:
-            if flip >=.7: # Update this to be a var, not a magic number
+            if flip >=.85: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
                 if value > 1:
                     ''' Early Update Rule '''
@@ -249,7 +305,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                     timer_weight = lateUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
                    
                 if timer.initiating_events[idx] == stimulus_type and timer.terminating_events[idx] == next_stimulus_type:
-                    if flip>=.9:
+                    if flip>=.5:
                         timer.setTimerWeight(timer_weight, idx)
                         
                 timer.terminating_events[idx] = next_stimulus_type
@@ -257,7 +313,9 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                     timer.setTimerWeight(timer_weight, idx)
                     timer.free_ramps = np.delete(timer.free_ramps, np.where(timer.free_ramps == idx))
                     timer.initiating_events[idx] = stimulus_type
-                
+                    
+                    # ramp_graph.add_edge(idx+N_EVENT_TYPES, stimulus_type)
+                    # ramp_graph.add_edge(idx+N_EVENT_TYPES, next_stimulus_type + 200)
         
         if timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type:
             if value > 1:
@@ -292,16 +350,25 @@ PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
-
+ramp_graph=nx.Graph()
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
-#event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
-#                               [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
+                         [50,0,0], [25,1,1], [50,0,0], 
+                         [25,1,1], [50,0,0], [25,1,1], 
+                         [50,0,0], [25,1,1], [50,0,0], 
+                         [25,1,1], [50,0,0], [25,1,1], 
+                         [50,0,0], [25,1,1], [50,0,0],
+                         [25,1,1], [50,0,0], [25,1,1],
+                         [50,0,0], [25,1,1], [50,0,0],
+                         [25,1,1], [50,0,0], [25,1,1],
+                         [50,0,0], [25,1,1], [50,0,0],
+                         [25,1,1], [50,0,0], [25,1,1]])
 
-event_data = TM.getEvents(25, 2)
+# event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,15, 1)] + [*range(16,19,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
 
 error_arr = np.zeros(NUM_EVENTS)
@@ -309,13 +376,14 @@ event_data = relative_to_absolute_event_time(event_data)
 
 # Last event, time axis for plotting        
 T = event_data[-1][0]
-
+NUM_RAMPS = 40
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
-timer=TM(1,100)
-
-ax1 = plt.subplot(211) # Subplot for timer activations and events
-ax2 = plt.subplot(212) # Subplot for error (not yet calculated)
-
+timer=TM(1,NUM_RAMPS)
+fig = plt.figure()
+ax1 = fig.add_subplot(211) # Subplot for timer activations and events
+ax2 = fig.add_subplot(212) # Subplot for error (not yet calculated)
+ax1.set_ylim([0,Y_LIM])
+ax1.set_xlim([0,T])
 # At each event e_i
 for idx, event in enumerate(event_data[:-1]):    
     house_light = idx in HOUSE_LIGHT_ON
@@ -324,8 +392,15 @@ for idx, event in enumerate(event_data[:-1]):
     stimulus_type = int(event[2])
     next_event = event_data[idx+1][0]
     next_stimulus_type=int(event_data[idx+1][2])
-   
+    # Plot event times and labels
+    if idx < NUM_EVENTS - 1:
+            ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
+            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
+    else:
+        ax1.text(event[0],2.1,'End')
     if house_light:
+        # Plot house light bar
+        ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
         # Look forward to all other intervals before house light turns off and start updating weights
         house_light_idx = idx + 1
         house_light_interval = True
@@ -349,7 +424,7 @@ for idx, event in enumerate(event_data[:-1]):
                 # responses = respond(house_light_timer_value, event_time, next_house_light_event_time, ax1, idx)
                 
                 
-                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type)
+                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
                     if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
                         if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
@@ -360,15 +435,9 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_idx+=1
             else:
                 house_light_interval=False
-        # Plot house light bar
-        ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
+       
     
-    # Plot event times and labels
-    if idx < NUM_EVENTS - 1:
-            ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
-            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
-    else:
-        ax1.text(event[0],2.1,'End')
+    
         
 
 
@@ -379,6 +448,9 @@ ax1.set_xlabel("Time")
 ax1.grid('on')
 ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
 ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
+
+# nx.draw(ramp_graph, with_labels = True)
+# plt.savefig("ramp_graph_spectral.png")
 
 # For plotting error on ax2
 # events = event_data[:-1,0]

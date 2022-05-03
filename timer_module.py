@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 15 13:14:22 2021
-
 @author: Robert Klock
-
 Class defining a timer module and related useful methods
 """
 import numpy as np
@@ -16,8 +14,6 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from itertools import permutations
 """
-
-
 Alternatively:
     3 components with different weights
         Flip a coin proportional to those weights 
@@ -448,8 +444,7 @@ if you repeat the stimulus, you can look it up in memory to see when it last hap
 once thats implemented, start buildig out some heuristics or biases
 sum of squares of error of timers. If they exceed some level you make 
 some decisions about garbage collection
-
 each ramp has a weight that gets updated/garbage collected depending on its 
 error  
 '''
-                
+                   

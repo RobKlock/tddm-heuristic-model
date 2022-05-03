@@ -398,7 +398,7 @@ for idx, event in enumerate(events_with_type[:-1]):
                 
                 #         # ax1.text(next_event_o_time-5,i, next_event_o_time)
                 
-                responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
+                # responses = respond(hl_timer_value, event_time, next_event_o_time, ax1, idx)
               
                 
                 next_house_light_idx+=1

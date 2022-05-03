@@ -2,24 +2,18 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Apr  4 23:32:38 2022
-
 @author: rob klock
-
 This model stimulates a timer that times events via ramps. 
 Ramps are basically weight values that adjust the rate of accumulation in a 
 drift-diffusion process. The weights are learned with one-shot rules to time
 the most recently observed event. 
-
 Each ramp has:
 - A start-event s_1 (last reset)
 - A weight w (initally very high, 1)
 - A stop event s_2 (can be NA, in which case the ramp is "unassigned")
-
 We refer to s_1 as "initiating event" and s_2 as "terminating event"
-
 We use stimulus and event interchangably. There is a difference, which is 
 why both are used, but not in this version.
-
 There is a pool of "free timers" which are ramps that retain their initiated
 weight and are able to learn new s_1,s_2 pairs. When a new event sequence is 
 observed, the model grabs free timers from the pool and updates them with 
@@ -94,11 +88,9 @@ def lateUpdateRule(vt, timer_weight, learning_rate, v0=1.0, z = 1, bias = 1):
     Vt: timer unit activation
     bias: bias of timer unit
     timer_weight: the weight of the timer
-
     Returns 
     -------
     The corrected timer weight for the associated event
-
     """
 
     drift = (timer_weight * v0)
@@ -115,11 +107,9 @@ def earlyUpdateRule(vt, timer_weight, learning_rate, v0=1.0, z = 1, bias = 1):
     Vt: timer unit activation
     bias: bias of timer unit
     timer_weight: the weight of the timer
-
     Returns 
     -------
     The corrected timer weight for the associated event
-
     """
     drift = (timer_weight * v0)
     d_A = drift * ((vt-z)/vt)
@@ -246,7 +236,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         """
         # If a timer is unassigned
         if timer.terminating_events[idx] == -1:
-            if flip >=.75:
+            if flip >=.7: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
                 if value > 1:
                     ''' Early Update Rule '''
@@ -261,13 +251,13 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                 if timer.initiating_events[idx] == stimulus_type and timer.terminating_events[idx] == next_stimulus_type:
                     if flip>=.9:
                         timer.setTimerWeight(timer_weight, idx)
-                        timer.terminating_events[idx]= next_stimulus_type
+                        
                
                 if idx in timer.free_ramps:
                     timer.setTimerWeight(timer_weight, idx)
                     timer.free_ramps = np.delete(timer.free_ramps, np.where(timer.free_ramps == idx))
                     timer.initiating_events[idx] = stimulus_type
-                    timer.terminating_events[idx] = next_stimulus_type
+                timer.terminating_events[idx] = next_stimulus_type
         
         if timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type:
             if value > 1:
@@ -303,13 +293,11 @@ ERROR_ANALYSIS_RESPONSES=[]
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
 
-#NUM_EVENTS=10
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
-#event_data = TM.getSamples(10, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
-
+#event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
-event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], 
-                         [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
+                               [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
 NUM_EVENTS = len(event_data) 
 HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,15, 1)] + [*range(16,19,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
@@ -321,7 +309,6 @@ T = event_data[-1][0]
 
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,100)
-
 
 ax1 = plt.subplot(211) # Subplot for timer activations and events
 ax2 = plt.subplot(212) # Subplot for error (not yet calculated)
@@ -358,9 +345,10 @@ for idx, event in enumerate(event_data[:-1]):
                 # Poisson sequence responses (not fully working yet)
                 # responses = respond(house_light_timer_value, event_time, next_house_light_event_time, ax1, idx)
                 
-                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_event_time, stimulus_type)
+                
+                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
-                    if timer.terminating_events[i] == next_house_light_event_time and timer.initiating_events[i] == stimulus_type:
+                    if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type:
                         ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
                         ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
 

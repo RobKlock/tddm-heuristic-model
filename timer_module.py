@@ -436,8 +436,34 @@ class TimerModule:
 # Useful visualization, just comment it out 
 # plt.hist(TimerModule.getSamples(num_samples=1000, num_normal=0, num_exp = 1, num_dists = 1), bins=40, color='black')
 # print(TimerModule.getSamples(num_samples=100, num_normal=3, num_exp = 0, num_dists = 3))
-      
+    # [relative_time, event_type, stimulus_type]
+    def getEvents(num_samples=1, num_normal = 2, num_exp = 0, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
+        num_event_types = num_normal + num_exp
+        
+        P = np.random.rand(num_event_types,num_event_types)
+        P = P/P.sum(axis=1, keepdims=True)
+        # D = np.random.randint(2,size=(num_event_types,num_event_types))
+        T = np.random.randint(20,50, size=(num_event_types,num_event_types))
+        S = np.full((num_event_types, num_event_types), 20)
+        D=np.ones((num_event_types,num_event_types))
+        NUM_DISTS = num_event_types * num_event_types
+        DIST_INDICES = np.arange(NUM_DISTS)
+        DIST_INDICES.shape=(num_event_types,num_event_types)
+        
+        
+        state = np.random.randint(num_event_types)
+        samples = np.empty([num_samples,3])
+        
+        for i in range(num_samples):
+            next_state = np.random.multinomial(1,P[state,:])
+            next_state = np.where(next_state==1)[0][0]
+            # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
+            time = (np.random.normal(T[state,next_state], 10,1) * D[state,next_state]) #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
             
+            samples[i] = [time[0],DIST_INDICES[state,next_state],state]
+            state = next_state
+        
+        return samples
 '''
 if something unusual happens, i release some timers 
 if you repeat the stimulus, you can look it up in memory to see when it last happened

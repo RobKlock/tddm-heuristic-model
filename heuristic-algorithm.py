@@ -252,12 +252,12 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                     if flip>=.9:
                         timer.setTimerWeight(timer_weight, idx)
                         
-               
+                timer.terminating_events[idx] = next_stimulus_type
                 if idx in timer.free_ramps:
                     timer.setTimerWeight(timer_weight, idx)
                     timer.free_ramps = np.delete(timer.free_ramps, np.where(timer.free_ramps == idx))
                     timer.initiating_events[idx] = stimulus_type
-                timer.terminating_events[idx] = next_stimulus_type
+                
         
         if timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type:
             if value > 1:
@@ -296,10 +296,13 @@ ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into l
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
-event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
-                               [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+#event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1],
+#                               [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1], [50,0,0], [25,1,1]])
+
+event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
 HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,15, 1)] + [*range(16,19,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+
 
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
@@ -348,10 +351,11 @@ for idx, event in enumerate(event_data[:-1]):
                 
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
-                    if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type:
-                        ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
-                        ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
-
+                    if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
+                        if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
+                            ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                            ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+        
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
             else:

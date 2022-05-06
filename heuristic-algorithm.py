@@ -265,24 +265,37 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
             stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
             next_stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
             if external_idx == 0:
-                ax2.plot([0], [stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
-                ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
-                ax2.plot([0,2], [stim_type_y_plot_val, idx],c='green', alpha=0.5)
-                ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c='green', alpha=0.5)
-            
+                point_1 = ax2.plot([0], [stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+                point_2 = ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+                
+                free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c='green', alpha=0.5)
+                free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c='green', alpha=0.5)
+                
             else:
                 stim_type_y_plot_val = (NUM_RAMPS/2) + (stimulus_type * (NUM_RAMPS/4))                 
                 next_stim_type_y_plot_val = (NUM_RAMPS/2) + (next_stimulus_type * (NUM_RAMPS/4))
                 ax2.plot([0], [stim_type_y_plot_val], marker='o',c=colors[stimulus_type], alpha=0.2) 
                 ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
-                ax2.plot([0,2], [stim_type_y_plot_val, idx],c=colors[stimulus_type], alpha=0.5)
-                ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c=colors[next_stimulus_type], alpha=0.5)
+                
+                free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c=colors[stimulus_type], alpha=0.5)
+                free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c=colors[next_stimulus_type], alpha=0.5)
             
             ax2.plot([2], [idx], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
             
+            filename=f'ramp-graph-frames/ramps-{time.time()}.png'
+            fig.savefig(filename)     
             
-        filename=f'ramp-graph-frames/ramps-{time.time()}.png'
-        fig.savefig(filename)     
+            line_1 = free_line.pop(-1)
+            
+            line_1.remove()
+            
+            
+            line_2 = free_line_2.pop(-1)
+            
+            line_2.remove()
+        
+        
+        
         
         """ 
         From all the ramps not idle who have either:
@@ -368,7 +381,7 @@ event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
 
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] #+ [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 
 
 error_arr = np.zeros(NUM_EVENTS)

@@ -350,9 +350,19 @@ def relative_to_absolute_event_time(relative_time_events):
    return absolute_time_events  
             
 def beat_the_clock_reward(event_time, response_time):
-    print(response_time[0])
-    print(event_time)
-    return math.exp(0.4 * (event_time - response_time[0]))
+    print(f'response_time: {response_time[0]}')
+    print(f'event_time: {event_time}')
+    print(f'diff: {response_time[0]-event_time}')
+
+    if (response_time[0] - event_time) > 0:
+        return 0
+    
+    return math.exp(0.4 * (response_time[0] - event_time))
+
+def change_response_threshold(response_threshold, learning_rate):
+    delta = learning_rate*(1-response_threshold)
+    return response_threshold + delta
+    
 
 ''' Global variables '''
 dt = 0.1
@@ -389,9 +399,10 @@ event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
 
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
-BTC_REWARD=np.empty(NUM_EVENTS)
-
+HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)] 
+#HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+btc_reward=np.empty(NUM_EVENTS)
+RESPONSE_THRESHOLD_LEARNING_RATE = .6
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
 
@@ -447,11 +458,11 @@ for idx, event in enumerate(event_data[:-1]):
                 if BEAT_THE_CLOCK:
                     if not (event_time==0):
                         response_time = event_time + start_threshold_time(house_light_timer_value, next_house_light_event_time-event_time)
-                        reward = beat_the_clock_reward(event_time, response_time)
-                        print(reward)
-                        START_THRESHOLD = math.exp(-.2 * reward)
+                        reward = beat_the_clock_reward(next_house_light_event_time, response_time)
+                        
+                        START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE)
                         ax1.hlines(START_THRESHOLD,0,event_time, color="green", alpha=0.3)
-                        BTC_REWARD[idx]=reward
+                        btc_reward[idx]=reward
                     
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
@@ -485,7 +496,7 @@ ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
 # events = event_data[:-1,0]
 # MSE = np.square(np.subtract(events,recorded_responses)).mean()
 # ax2.plot(np.arange(0,NUM_EVENTS,1), MSE)
-ax2.plot(BTC_REWARD)
+ax2.plot(np.cumsum(btc_reward))
 ax2.set_xlim([0,NUM_EVENTS])
 # ax2.set_ylabel("Sq Error")
 # ax2.set_xlabel("Event #")

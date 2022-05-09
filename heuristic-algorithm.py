@@ -264,35 +264,36 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         if idx in timer.free_ramps:
             stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
             next_stim_type_y_plot_val = (NUM_RAMPS/2) - (NUM_RAMPS/4)
-            if external_idx == 0:
-                point_1 = ax2.plot([0], [stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
-                point_2 = ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+            # if external_idx == 0:
+            #     point_1 = ax2.plot([0], [stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
+            #     point_2 = ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c='green', alpha=0.2) 
                 
-                free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c='green', alpha=0.5)
-                free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c='green', alpha=0.5)
+            #     free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c='green', alpha=0.5)
+            #     free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c='green', alpha=0.5)
                 
-            else:
-                stim_type_y_plot_val = (NUM_RAMPS/2) + (stimulus_type * (NUM_RAMPS/4))                 
-                next_stim_type_y_plot_val = (NUM_RAMPS/2) + (next_stimulus_type * (NUM_RAMPS/4))
-                ax2.plot([0], [stim_type_y_plot_val], marker='o',c=colors[stimulus_type], alpha=0.2) 
-                ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+            # else:
+            #     stim_type_y_plot_val = (NUM_RAMPS/2) + (stimulus_type * (NUM_RAMPS/4))                 
+            #     next_stim_type_y_plot_val = (NUM_RAMPS/2) + (next_stimulus_type * (NUM_RAMPS/4))
+            #     ax2.plot([0], [stim_type_y_plot_val], marker='o',c=colors[stimulus_type], alpha=0.2) 
+            #     ax2.plot([4], [next_stim_type_y_plot_val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
                 
-                free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c=colors[stimulus_type], alpha=0.5)
-                free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c=colors[next_stimulus_type], alpha=0.5)
+            #     free_line = ax2.plot([0,2], [stim_type_y_plot_val, idx],c=colors[stimulus_type], alpha=0.5)
+            #     free_line_2 = ax2.plot([2,4], [idx, next_stim_type_y_plot_val],c=colors[next_stimulus_type], alpha=0.5)
             
-            ax2.plot([2], [idx], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+            # ax2.plot([2], [idx], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
             
-            filename=f'ramp-graph-frames/ramps-{time.time()}.png'
-            fig.savefig(filename)     
+            # if SAVE_RAMP_NETWORK_ANIMATION_FRAMES:
+            #     filename=f'ramp-graph-frames/ramps-{time.time()}.png'
+            #     fig.savefig(filename)     
             
-            line_1 = free_line.pop(-1)
+            # line_1 = free_line.pop(-1)
             
-            line_1.remove()
+            # line_1.remove()
             
             
-            line_2 = free_line_2.pop(-1)
+            # line_2 = free_line_2.pop(-1)
             
-            line_2.remove()
+            # line_2.remove()
         
         
         
@@ -348,6 +349,11 @@ def relative_to_absolute_event_time(relative_time_events):
        absolute_time_events[i][0] = relative_time_events[i-1][0] + relative_time_events[i][0]
    return absolute_time_events  
             
+def beat_the_clock_reward(event_time, response_time):
+    print(response_time[0])
+    print(event_time)
+    return math.exp(0.4 * (event_time - response_time[0]))
+
 ''' Global variables '''
 dt = 0.1
 N_EVENT_TYPES= 2 # Number of event types (think, stimulus A, stimulus B, ...)
@@ -361,9 +367,11 @@ START_THRESHOLD=.5 # Response start threshold
 STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
+BEAT_THE_CLOCK = True
 colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
 ramp_graph=nx.Graph()
+SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
@@ -381,8 +389,8 @@ event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
 
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] #+ [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
-
+HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
+BTC_REWARD=np.empty(NUM_EVENTS)
 
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
@@ -436,7 +444,15 @@ for idx, event in enumerate(event_data[:-1]):
                 # Poisson sequence responses (not fully working yet)
                 # responses = respond(house_light_timer_value, event_time, next_house_light_event_time, ax1, idx)
                 
-                
+                if BEAT_THE_CLOCK:
+                    if not (event_time==0):
+                        response_time = event_time + start_threshold_time(house_light_timer_value, next_house_light_event_time-event_time)
+                        reward = beat_the_clock_reward(event_time, response_time)
+                        print(reward)
+                        START_THRESHOLD = math.exp(-.2 * reward)
+                        ax1.hlines(START_THRESHOLD,0,event_time, color="green", alpha=0.3)
+                        BTC_REWARD[idx]=reward
+                    
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
                     if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
@@ -459,7 +475,7 @@ ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")
 ax1.set_xlabel("Time")
 ax1.grid('on')
-ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
+#ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
 ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
 
 # nx.draw(ramp_graph, with_labels = True)
@@ -469,7 +485,8 @@ ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
 # events = event_data[:-1,0]
 # MSE = np.square(np.subtract(events,recorded_responses)).mean()
 # ax2.plot(np.arange(0,NUM_EVENTS,1), MSE)
-# ax2.set_xlim([0,NUM_EVENTS])
+ax2.plot(BTC_REWARD)
+ax2.set_xlim([0,NUM_EVENTS])
 # ax2.set_ylabel("Sq Error")
 # ax2.set_xlabel("Event #")
 # ax2.grid('on')

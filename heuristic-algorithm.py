@@ -350,14 +350,48 @@ def relative_to_absolute_event_time(relative_time_events):
    return absolute_time_events  
             
 def beat_the_clock_reward(event_time, response_time):
-    print(f'response_time: {response_time[0]}')
-    print(f'event_time: {event_time}')
-    print(f'diff: {response_time[0]-event_time}')
-
-    if (response_time[0] - event_time) > 0:
+    if (response_time - event_time) > 0:
         return 0
     
-    return math.exp(0.4 * (response_time[0] - event_time))
+    return math.exp(0.4 * (response_time - event_time))
+
+def beat_the_clock_threshold_time(timer_value, event_time, next_event, ax1, idx):
+    # Given all ramp vaues, return first time when K active ramps cross start threshold
+    
+    # Find start threshold times for each ramp
+    start_threshold_times = start_threshold_time(timer_value, next_event-event_time)
+    start_threshold_times += event_time
+    start_threshold_times.sort()
+    start_threshold_times = np.vstack((start_threshold_times, np.ones(len(start_threshold_times)))).T
+    
+    # Find stop threshold times for each ramp
+    stop_threshold_times = stop_threshold_time(timer_value, next_event-event_time)
+    stop_threshold_times += event_time
+    stop_threshold_times.sort()
+    stop_threshold_times = np.vstack((stop_threshold_times, (-1* np.ones(len(stop_threshold_times))))).T
+    
+    # Zip start and stop times
+    start_stop_pairs = np.vstack((start_threshold_times, stop_threshold_times))
+    start_stop_pairs = start_stop_pairs[start_stop_pairs[:, 0].argsort()]
+
+    k = 0
+    k_o = 0 # Old value of k
+    
+    # Form list of start and stop events, sorted by time (a1, sig1, a2, a3, sig2, sig3 etc)
+    # Loop through all, if start event, k++, else, k--
+    # Identify all periods of k > K
+    # Fill with Poisson seq (samples then add the start time to all of them)
+    # once theyre greater than the boundary where they stop, throw them out
+    for jdx, time in enumerate(start_stop_pairs):
+        k+=time[1]
+        # print(f'k: {k} \t time: {time[0]}')
+        # We're entering a response period
+        if k_o < K and k >= K:
+            response_period_start = time[0]
+            break
+    
+    return response_period_start
+    
 
 def change_response_threshold(response_threshold, learning_rate):
     delta = learning_rate*(1-response_threshold)
@@ -451,16 +485,21 @@ for idx, event in enumerate(event_data[:-1]):
                 active_ramp_indices = np.append(initiating_active_indices, timer.free_ramps)
                 
                 house_light_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE)
-                
+                active_timer_value = activationAtIntervalEnd(timer, initiating_active_indices, next_house_light_event_time - event_time, NOISE)
                 # Poisson sequence responses (not fully working yet)
                 # responses = respond(house_light_timer_value, event_time, next_house_light_event_time, ax1, idx)
                 
                 if BEAT_THE_CLOCK:
                     if not (event_time==0):
-                        response_time = event_time + start_threshold_time(house_light_timer_value, next_house_light_event_time-event_time)
+                        # response_time = event_time + start_threshold_time(house_light_timer_value, next_house_light_event_time-event_time)
+                        
+                        response_time = beat_the_clock_threshold_time(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
+                        print(f'response_time: {response_time}')
                         reward = beat_the_clock_reward(next_house_light_event_time, response_time)
                         
                         START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE)
+                        
+                        
                         ax1.hlines(START_THRESHOLD,0,event_time, color="green", alpha=0.3)
                         btc_reward[idx]=reward
                     

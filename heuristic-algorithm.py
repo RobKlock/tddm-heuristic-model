@@ -382,6 +382,7 @@ def beat_the_clock_threshold_time(timer_value, event_time, next_event, ax1, idx)
     # Identify all periods of k > K
     # Fill with Poisson seq (samples then add the start time to all of them)
     # once theyre greater than the boundary where they stop, throw them out
+    response_period_start = 100
     for jdx, time in enumerate(start_stop_pairs):
         k+=time[1]
         # print(f'k: {k} \t time: {time[0]}')
@@ -393,9 +394,14 @@ def beat_the_clock_threshold_time(timer_value, event_time, next_event, ax1, idx)
     return response_period_start
     
 
-def change_response_threshold(response_threshold, learning_rate):
-    delta = learning_rate*(1-response_threshold)
-    return response_threshold + delta
+def change_response_threshold(response_threshold, learning_rate, btc_reward, reward):
+    # delta = learning_rate*(1-response_threshold)
+    # TODO: Try reward now - running average of rewards
+    # Want to have a function that makes big jumps when very wrong and little jumps as it starts to be right
+    
+    # Or just go back to the first stop threshold once you're late
+    # Or do hill climbing algorithm with tiny steps
+    return response_threshold + (1 * (1-response_threshold)) # np.tanh(100 * (reward - btc_reward[-1])) * (1-response_threshold)
     
 
 ''' Global variables '''
@@ -416,24 +422,26 @@ colors = list(mcolors.TABLEAU_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G'] # For converting event types into letters 
 ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
+
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
 event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
-                         [50,0,0], [25,1,1], [50,0,0], 
-                         [25,1,1], [50,0,0], [25,1,1], 
-                         [50,0,0], [25,1,1], [50,0,0], 
-                         [25,1,1], [50,0,0], [25,1,1], 
-                         [50,0,0], [25,1,1], [50,0,0],
-                         [25,1,1], [50,0,0], [25,1,1],
-                         [50,0,0], [25,1,1], [50,0,0],
-                         [25,1,1], [50,0,0], [25,1,1],
-                         [50,0,0], [25,1,1], [50,0,0],
-                         [25,1,1], [50,0,0], [25,1,1]])
+                          [50,0,0], [25,1,1], [50,0,0], 
+                          [25,1,1], [50,0,0], [25,1,1], 
+                          [50,0,0], [25,1,1], [50,0,0], 
+                          [25,1,1], [50,0,0], [25,1,1], 
+                          [50,0,0], [25,1,1], [50,0,0],
+                          [25,1,1], [50,0,0], [25,1,1],
+                          [50,0,0], [25,1,1], [50,0,0],
+                          [25,1,1], [50,0,0], [25,1,1],
+                          [50,0,0], [25,1,1], [50,0,0],
+                          [25,1,1], [50,0,0], [25,1,1]])
+# TODO: Make start threhsolds an array of values
 
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)] 
+HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 btc_reward=np.empty(NUM_EVENTS)
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
@@ -450,6 +458,8 @@ ax1 = fig.add_subplot(211) # Subplot for timer activations and events
 ax2 = fig.add_subplot(212) # Subplot for error (not yet calculated)
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
+ax1.hlines(START_THRESHOLD,0,event_data[1][0], color="green", alpha=0.3)
+
 # At each event e_i
 for idx, event in enumerate(event_data[:-1]):    
     house_light = idx in HOUSE_LIGHT_ON
@@ -491,24 +501,21 @@ for idx, event in enumerate(event_data[:-1]):
                 
                 if BEAT_THE_CLOCK:
                     if not (event_time==0):
-                        # response_time = event_time + start_threshold_time(house_light_timer_value, next_house_light_event_time-event_time)
-                        
                         response_time = beat_the_clock_threshold_time(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
                         print(f'response_time: {response_time}')
+                        print(f'start threshold: {START_THRESHOLD}')
                         reward = beat_the_clock_reward(next_house_light_event_time, response_time)
+                        ax1.hlines(START_THRESHOLD,event_time,next_house_light_event_time, color="green", alpha=0.8)
+                        START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE, btc_reward, reward)
                         
-                        START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE)
-                        
-                        
-                        ax1.hlines(START_THRESHOLD,0,event_time, color="green", alpha=0.3)
                         btc_reward[idx]=reward
                     
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
                     if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
-                        if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
-                            ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
-                            ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        # if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
+                        ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle = "dashed",  c=colors[next_stimulus_type], alpha=0.5)
+                        ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
         
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
@@ -518,8 +525,7 @@ for idx, event in enumerate(event_data[:-1]):
     
     
         
-
-
+print(40 - len(timer.free_ramps))
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")

@@ -1,6 +1,6 @@
 # tddm-heuristic-model
 By: Robert Klock
-
+Advised by Dr. Patrick Simen and Dr. Francois Rivest
 A constructive interval timing algorithm.
 
 <h1> Abstract </h2>

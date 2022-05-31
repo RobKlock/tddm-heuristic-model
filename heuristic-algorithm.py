@@ -410,6 +410,8 @@ def change_response_threshold(response_threshold, learning_rate, btc_reward, rew
     
     # need to keep track of how early or late we are 
     return response_threshold + learning_rate*(1-response_threshold) # np.tanh(100 * (reward - btc_reward[-1])) * (1-response_threshold)
+
+# def reproduce_sequence(timer, reproduced_sequence_plot):
     
 
 ''' Global variables '''
@@ -493,7 +495,6 @@ hey_jude=np.asarray([
     [note_lengths["sixteenth"], notes["A"], notes["A"]]  # ter
     ]) 
 
-# event_data = hey_jude
 random_seq = False
 if random_seq:
     seq_length = 7
@@ -526,6 +527,8 @@ else:
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
 
+#event_data = hey_jude
+HOUSE_LIGHT_ON= [*range(0, 4,1)]+ [*range(6, 10,1)]
 # + [*range(18, 33,1)]
 #HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
@@ -540,8 +543,12 @@ NUM_RAMPS = 100
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,NUM_RAMPS)
 fig = plt.figure()
+reproduced_sequence_plot = plt.figure()
 ax1 = fig.add_subplot(211) # Subplot for timer activations and events
 ax2 = fig.add_subplot(212, sharex=ax1) # Subplot for error (not yet calculated)
+reproduced_sequence_plot.set_ylim([0,Y_LIM])
+reproduced_sequence_plot.set_xlim([0,T])
+
 ax1.set_ylim([0,Y_LIM])
 ax2.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
@@ -616,7 +623,7 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_interval=False
        
     
-    
+reproduce_sequence(timer, reproduced_sequence_plot)    
         
 print(40 - len(timer.free_ramps))
 ax1.set_ylim([0,Y_LIM])

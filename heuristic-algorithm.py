@@ -411,8 +411,42 @@ def change_response_threshold(response_threshold, learning_rate, btc_reward, rew
     # need to keep track of how early or late we are 
     return response_threshold + learning_rate*(1-response_threshold) # np.tanh(100 * (reward - btc_reward[-1])) * (1-response_threshold)
 
-# def reproduce_sequence(timer, reproduced_sequence_plot):
+def reproduce_sequence(timer, events, reproduced_sequence_plot):
+    initiating_terminating_pairs = []
+    repro_sequence = []
+    # Transform event list into pairs of initiating and terminating events
+    for i in range(0, len(events)-2):
+        event_1 = events[i]
+        event_2 = events[i+1]
+        
+        stim_1 = event_1[2]
+        stim_2 = event_2[2]
+        
+        initiating_terminating_pairs.append([stim_1,stim_2])
     
+    # # For each pair
+    # for init_term_pair in initiating_terminating_pairs:
+    #     # Get weight from associated time (or average weight)
+    #     weight_init_idx = np.where(timer.initiating_events == stim_1)
+    #     weight_term_idx = np.where(timer.terminating_events == stim_2)
+    #     print(weight_init_idx)
+    #     print(weight_term_idx)
+    #     print("=")
+        
+    # Get all A-initiating ramps and sort them
+    weight_idx = np.where(timer.initiating_events == stim_1)
+    weights = np.flip(np.sort([timer.timerWeight(weight_idx)]))
+    
+    # Calculate threshold time
+    for weight in weights:
+        threshold_time = 1/weight
+        
+        
+        # # Add time to reproduced sequence
+        repro_sequence.append(threshold_time)
+        reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v")
+    # Plot reproduced sequence
+    return 0
 
 ''' Global variables '''
 dt = 0.1
@@ -543,16 +577,18 @@ NUM_RAMPS = 100
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,NUM_RAMPS)
 fig = plt.figure()
-reproduced_sequence_plot = plt.figure()
 ax1 = fig.add_subplot(211) # Subplot for timer activations and events
 ax2 = fig.add_subplot(212, sharex=ax1) # Subplot for error (not yet calculated)
-reproduced_sequence_plot.set_ylim([0,Y_LIM])
-reproduced_sequence_plot.set_xlim([0,T])
 
 ax1.set_ylim([0,Y_LIM])
 ax2.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 # ax1.hlines(START_THRESHOLD,0,event_data[1][0], color="green", alpha=0.3)
+
+reproduced_sequence_plot = plt.figure()
+rsp = reproduced_sequence_plot.add_subplot(111)
+rsp.set_ylim([0,Y_LIM])
+rsp.set_xlim([0,T])
 
 # At each event e_i
 for idx, event in enumerate(event_data[:-1]):    
@@ -623,14 +659,15 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_interval=False
        
     
-reproduce_sequence(timer, reproduced_sequence_plot)    
+reproduce_sequence(timer, event_data, rsp)    
         
-print(40 - len(timer.free_ramps))
+# print(40 - len(timer.free_ramps))
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")
 ax1.set_xlabel("Time")
 ax1.grid('on')
+ax2.grid('on')
 #ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
 ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
 

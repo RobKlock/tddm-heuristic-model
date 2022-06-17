@@ -108,7 +108,8 @@ class TimerModule:
         # use np.where
         # 3 columns
         # slope of ramp, assigned or not, initiaing events, terminating event, 
-        self.terminating_events = np.full(n_timers, -1)
+        self.terminating_events = np.full(n_timers, -1) # TODO: change this to np.nan
+        
         self.initiating_events = np.full(n_timers, -1)
         self.stimulus_dict = {} # timers wit s_1 = e
         self.terminating_dict= {} # timers with s_2 = e

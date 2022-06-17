@@ -328,6 +328,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
                     
                     # ramp_graph.add_edge(idx+N_EVENT_TYPES, stimulus_type)
                     # ramp_graph.add_edge(idx+N_EVENT_TYPES, next_stimulus_type + 200)
+            continue
         
         if timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type:
             if flip>=.8:
@@ -456,38 +457,42 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
     # make less hacky
     initiating_terminating_pairs = []
     repro_sequence = []
-    # # Transform event list into pairs of initiating and terminating events
-    # for i in range(0, len(events)-2):
-    #     event_1 = events[i]
-    #     event_2 = events[i+1]
-        
-    #     stim_1 = event_1[2]
-    #     stim_2 = event_2[2]
-        
-    #     # change this to not mutate the array itself
-    #     initiating_terminating_pairs.append([stim_1,stim_2])
-    
+   
     # Get the first event weights
     weight_idx = np.where(timer.initiating_events == events[0][2])
     
+    # asending sort
     weights = np.flip(np.sort([timer.timerWeight(weight_idx)]))
     
     # weights = np.flip(np.sort([timer.timerWeight(weight_idx)]))
     weights_set=set(timer.terminating_events.flatten())
+    
+    if -1 in weights_set:
+        weights_set.remove(-1)
+    
     avg_weights = np.empty(len(weights_set))
     # timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type
+    
+    # plot red bars
     for weight in weights:
           threshold_time = 1/weight
           # # Add time to reproduced sequence
           repro_sequence.append(threshold_time)
-          reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v", color='r')
-          
+          # reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v", color='r')
+   
+    print(weights_set)
     for idx, term_event in enumerate(weights_set):
-        idxs =  np.where(timer.terminating_events[weight_idx] == term_event)
+        idxs_term = np.where(timer.terminating_events == term_event)
+        idxs_init = np.where(timer.initiating_events == events[0][2])
+        idxs = np.intersect1d(idxs_term, idxs_init)
         # idxs = weight_idx[np.in1d(weight_idx, term_idxs)]
         print(f'weights for {idx}: {timer.timerWeight(idxs)}')
-        trimmed = trim_mean(timer.timerWeight(idxs), 0.3)
-        avg_weight = np.mean(trimmed)
+        print(f'indexes: {idxs}')
+        non_1_weights = []
+        for weight in timer.timerWeight(idxs)[timer.timerWeight(idxs) != 2]:
+            non_1_weights.append(weight)
+        # trimmed = trim_mean(timer.timerWeight(idxs), 0.3)
+        avg_weight = sum(non_1_weights)/len(non_1_weights) # np.nanmean(timer.timerWeight(idxs))
         avg_weights[idx] = avg_weight
         
     # print(f'avg weights: {avg_weights}')
@@ -497,7 +502,8 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
         threshold_time = 1/weight
         # # Add time to reproduced sequence
         #repro_sequence.append(threshold_time)
-        reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v")
+        # plot blue bars
+        reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v", color='g')
     # Plot reproduced sequence
     return 0
 
@@ -632,7 +638,7 @@ else:
 NUM_EVENTS = len(event_data) 
 
 #event_data = hey_jude
-HOUSE_LIGHT_ON= [*range(0, 4,1)]+ [*range(6, 10,1)] + [*range(12, 16,1)]
+HOUSE_LIGHT_ON= [*range(0, 4,1)] + [*range(6, 10,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
 # + [*range(18, 33,1)]
 #HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]

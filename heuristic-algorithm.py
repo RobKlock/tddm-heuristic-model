@@ -308,7 +308,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         """
         # If a timer is unassigned
         if timer.terminating_events[idx] == -1:
-            if flip >=.6: # Update this to be a var, not a magic number
+            if flip >=.8: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
                 if value > 1:
                     ''' Early Update Rule '''
@@ -331,7 +331,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
             continue
         
         if timer.terminating_events[idx] == next_stimulus_type and timer.initiating_events[idx] == stimulus_type:
-            if flip>=.8:
+            if flip>=.9:
                 if value > 1:
                     ''' Early Update Rule '''
                     #plot_early_update_rule(start_time, end_time, timer_weight, T, event_type, value)
@@ -513,7 +513,7 @@ dt = 0.1
 N_EVENT_TYPES= 10 # Number of event types (think, stimulus A, stimulus B, ...)
 # NUM_EVENTS=17#  Total amount of events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.0009 # Internal noise - timer activation
+NOISE=0.005# Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 5 # Amount of timers that must be active to respond
@@ -522,12 +522,12 @@ STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
 BEAT_THE_CLOCK = False
-colors = list(mcolors.CSS4_COLORS) # Color support for events
+colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S'] # For converting event types into letters 
 ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 250
+NUM_RAMPS = 200
 
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
@@ -624,11 +624,19 @@ else:
                           [25,1,1], [50,0,0], [25,1,1]])
     
     event_data = np.asarray([[0,1,1], [50,0,0], [25,1,2],
-                          [50,0,3], [25,1,4], [50,0,5], 
+                          [50,0,3], [25,1,4], [50,0,5],
+                          [30,1,6], [60,0,7], [10,1,8],
+                          [100,0,9], [25,1,10], 
+                          
                           [25,1,1], [50,0,0], [25,1,2], 
-                          [50,0,3], [25,1,4], [50,0,5], 
+                          [50,0,3], [25,1,4], [50,0,5],
+                          [30,1,6], [60,0,7], [10,1,8],
+                          [100,0,9], [25,1,10], 
+                          
                           [25,1,1], [50,0,0], [25,1,2], 
-                          [50,0,3], [25,1,4], [50,0,5]])
+                          [50,0,3], [25,1,4], [50,0,5],
+                          [30,1,6], [60,0,7], [10,1,8],
+                          [100,0,9], [25,1,10], ])
                           
     
     
@@ -636,9 +644,10 @@ else:
 
 # event_data = TM.getEvents(25, 2)
 NUM_EVENTS = len(event_data) 
-
+event_noise = np.random.normal(1, .1, event_data.shape)
+# event_data = event_data + event_noise
 #event_data = hey_jude
-HOUSE_LIGHT_ON= [*range(0, 4,1)] + [*range(6, 10,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
+HOUSE_LIGHT_ON= [*range(0, 2,1)] + [*range(11, 13,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
 # + [*range(18, 33,1)]
 #HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
@@ -654,7 +663,7 @@ T = event_data[-1][0]
 timer=TM(1,NUM_RAMPS)
 fig = plt.figure()
 ax1 = fig.add_subplot(211) # Subplot for timer activations and events
-ax2 = fig.add_subplot(212, sharex=ax1) # Subplot for error (not yet calculated)
+ax2 = fig.add_subplot(312, sharex=ax1) # Subplot for error (not yet calculated)
 
 ax1.set_ylim([0,Y_LIM])
 ax2.set_ylim([0,Y_LIM])
@@ -664,7 +673,11 @@ ax1.set_xlim([0,T])
 reproduced_sequence_plot = plt.figure()
 rsp = reproduced_sequence_plot.add_subplot(111)
 rsp.set_ylim([0,Y_LIM])
-rsp.set_xlim([0,T])
+rsp.set_xlim([0,200])
+
+captured_distribution_plot = plt.figure()
+cap_dist = captured_distribution_plot.add_subplot(111)
+
 
 ''' Simulation Start '''
 # At each event e_i
@@ -729,8 +742,8 @@ for idx, event in enumerate(event_data[:-1]):
                         # if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
                         ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type], alpha=0.3)
                         ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
-                        if val < 5:
-                            ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
+                        # if val < 5:
+                            # ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
         
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
@@ -747,6 +760,12 @@ preallocate memory
 """
      
 # print(40 - len(timer.free_ramps))
+
+for ramp in timer.ramps():
+    threshold_time = 1/ramp
+    ax2.plot([0, threshold_time], [0,1], marker='o')
+cap_dist.grid("on")
+
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 ax1.set_ylabel("Activation")

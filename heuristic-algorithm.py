@@ -308,7 +308,7 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         """
         # If a timer is unassigned
         if timer.terminating_events[idx] == -1:
-            if flip >=.8: # Update this to be a var, not a magic number
+            if flip >=.75: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
                 if value > 1:
                     ''' Early Update Rule '''
@@ -480,14 +480,14 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
           repro_sequence.append(threshold_time)
           # reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v", color='r')
    
-    print(weights_set)
+    # print(weights_set)
     for idx, term_event in enumerate(weights_set):
         idxs_term = np.where(timer.terminating_events == term_event)
         idxs_init = np.where(timer.initiating_events == events[0][2])
         idxs = np.intersect1d(idxs_term, idxs_init)
         # idxs = weight_idx[np.in1d(weight_idx, term_idxs)]
-        print(f'weights for {idx}: {timer.timerWeight(idxs)}')
-        print(f'indexes: {idxs}')
+        # print(f'weights for {idx}: {timer.timerWeight(idxs)}')
+        # print(f'indexes: {idxs}')
         non_1_weights = []
         for weight in timer.timerWeight(idxs)[timer.timerWeight(idxs) != 2]:
             non_1_weights.append(weight)
@@ -503,7 +503,7 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
         # # Add time to reproduced sequence
         #repro_sequence.append(threshold_time)
         # plot blue bars
-        reproduced_sequence_plot.vlines(threshold_time, 0,1, label="v", color='g')
+        reproduced_sequence_plot.vlines(threshold_time, 0,2, label="v", color='g')
     # Plot reproduced sequence
     return 0
 
@@ -527,7 +527,7 @@ ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
 ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 200
+NUM_RAMPS = 500
 
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
@@ -606,7 +606,7 @@ if random_seq:
         
     event_data = event_data + event_data[1:] + event_data[1:] + event_data[1:]
     event_data = np.asarray(event_data)
-    HOUSE_LIGHT_ON = [*range(0,seq_length-1,1)] + [*range(seq_length,(seq_length*2)-1,1)] + [*range(seq_length*2,(seq_length*3)-1,1)]
+    HOUSE_LIGHT_ON = [*range(0,seq_length-1,1)] + [*range(seq_length,(seq_length*2)-1,1)] + [*range(seq_length*2,(seq_length*3)-3,1)]
 
 else:
     # TODO: Change this to arange
@@ -641,20 +641,29 @@ else:
     
     
 # TODO: Make start threhsolds an array of values
-
-# event_data = TM.getEvents(25, 2)
+seq_len =  4
+repeat_num = 3
+event_data = TM.getEvents(num_samples=4, num_normal = 2, num_exp = 0, repeat = 3)
 NUM_EVENTS = len(event_data) 
-event_noise = np.random.normal(1, .1, event_data.shape)
+# event_noise = np.random.normal(1, .1, event_data.shape)
 # event_data = event_data + event_noise
 #event_data = hey_jude
-HOUSE_LIGHT_ON= [*range(0, 2,1)] + [*range(11, 13,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
+HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)]  + [*range(seq_len*2, seq_len * 3 - 1,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
 # + [*range(18, 33,1)]
 #HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 btc_reward=np.empty(NUM_EVENTS)
 
+
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
+
+
+for idx, i, in enumerate(event_data[1:seq_len+1,2]):
+    if i in event_data[1:seq_len+1,2]:
+        for r in range(0,repeat_num):
+            event_data[idx + (r*seq_len) + 1][2] = event_data[idx][2]+1
+
 
 # Last event, time axis for plotting        
 T = event_data[-1][0]
@@ -663,7 +672,7 @@ T = event_data[-1][0]
 timer=TM(1,NUM_RAMPS)
 fig = plt.figure()
 ax1 = fig.add_subplot(211) # Subplot for timer activations and events
-ax2 = fig.add_subplot(312, sharex=ax1) # Subplot for error (not yet calculated)
+ax2 = fig.add_subplot(212, sharex=ax1) # Subplot for error (not yet calculated)
 
 ax1.set_ylim([0,Y_LIM])
 ax2.set_ylim([0,Y_LIM])
@@ -675,8 +684,8 @@ rsp = reproduced_sequence_plot.add_subplot(111)
 rsp.set_ylim([0,Y_LIM])
 rsp.set_xlim([0,200])
 
-captured_distribution_plot = plt.figure()
-cap_dist = captured_distribution_plot.add_subplot(111)
+# captured_distribution_plot = plt.figure()
+# cap_dist = captured_distribution_plot.add_subplot(111)
 
 
 ''' Simulation Start '''
@@ -742,8 +751,8 @@ for idx, event in enumerate(event_data[:-1]):
                         # if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
                         ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type], alpha=0.3)
                         ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
-                        # if val < 5:
-                            # ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
+                        if val < 5:
+                            ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
         
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
@@ -751,7 +760,7 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_interval=False
        
     
-reproduce_sequence_(timer, event_data, rsp)    
+# reproduce_sequence_(timer, event_data, rsp)    
    
 """
 Overall: watch for side effects
@@ -763,8 +772,10 @@ preallocate memory
 
 for ramp in timer.ramps():
     threshold_time = 1/ramp
-    ax2.plot([0, threshold_time], [0,1], marker='o')
-cap_dist.grid("on")
+    # ax2.plot([0, threshold_time], [0,1], marker='o')
+    rsp.plot([0, threshold_time], [0,1], marker='x')
+    rsp.set_xlim([0,T])
+# cap_dist.grid("on")
 
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])

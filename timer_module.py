@@ -278,7 +278,7 @@ class TimerModule:
 # plt.hist(TimerModule.getSamples(num_samples=1000, num_normal=0, num_exp = 1, num_dists = 1), bins=40, color='black')
 # print(TimerModule.getSamples(num_samples=100, num_normal=3, num_exp = 0, num_dists = 3))
     # [relative_time, event_type, stimulus_type]
-    def getEvents(num_samples=1, num_normal = 2, num_exp = 0, deviation=1, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
+    def getEvents(num_samples=1, num_normal = 2, num_exp = 0, repeat = 2, deviation=1, ret_params = False, standard_interval = -1, scale_beg=20, scale_end=50):
         num_event_types = num_normal + num_exp
         
         P = np.random.rand(num_event_types,num_event_types)
@@ -291,21 +291,35 @@ class TimerModule:
         NUM_DISTS = num_event_types * num_event_types # number of distributions
         DIST_INDICES = np.arange(NUM_DISTS) 
         DIST_INDICES.shape=(num_event_types,num_event_types) # convert indices into square matrix
-        
+        break_type = num_samples+1
         
         state = np.random.randint(num_event_types) # current state
-        samples = np.empty([num_samples,3]) # initialize array of samples 
-        
+        samples = np.empty([(num_samples * repeat) + (repeat-1),3]) # initialize array of samples 
+        # samples[0] = [0,break_type,break_type]
+        first_state = state
         for i in range(num_samples):
             next_state = np.random.multinomial(1,distribution_weights[state,:]) # get next state according to distribution weights
             next_state = np.where(next_state==1)[0][0] # index location of distribution
             # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
-            time = (np.random.normal(centers[state,next_state], 10,1) * deviations[state,next_state]) # sample from normal dist to get time
+            time = (np.random.normal(centers[state,next_state], 7,1) * deviations[state,next_state]) # sample from normal dist to get time
             #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
+            for j in range(0,repeat):
+                samples[i+(num_samples*j) + 1] = [time[0],DIST_INDICES[state,next_state],state] # add sample in form [relative time, event type, stimulus type]
             
-            samples[i] = [time[0],DIST_INDICES[state,next_state],state] # add sample in form [relative time, event type, stimulus type]
+                # samples[i+(j-1)] = [time[0],DIST_INDICES[state,next_state],state] 
             state = next_state # proceed to next state
         
+        """   
+        # Loop through samples and repeat the sequence by re-sampling fro each distribution type
+        for i in range(repeat-1):
+            state = first_state
+            for j in range(num_samples):
+                next_state = int(samples[j+1][2])
+                
+                time = (np.random.normal(centers[state,next_state], 10,1) * deviations[state,next_state]) 
+                samples[j+i] = [time[0],DIST_INDICES[state,next_state],state]
+                state = next_state 
+        """
         return samples
 '''
 if something unusual happens, i release some timers 

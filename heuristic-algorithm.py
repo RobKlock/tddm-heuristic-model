@@ -307,6 +307,14 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         Pick N randomly and update them for the interval s1->s2=e_i
         """
         # If a timer is unassigned
+        # if min(len(np.where(timer.initiating_events == stimulus_type)[0]), len(np.where(timer.terminating_events == next_stimulus_type)[0]))>RAMPS_PER_EVENT:
+        #     continue
+        if len(
+                np.where(
+                    timer.terminating_events[
+                        np.where(timer.initiating_events == stimulus_type)] == next_stimulus_type)[0])>RAMPS_PER_EVENT:
+            continue
+        
         if timer.terminating_events[idx] == -1:
             if flip >=.75: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
@@ -528,6 +536,7 @@ ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
 NUM_RAMPS = 500
+RAMPS_PER_EVENT = 5
 
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
@@ -623,6 +632,7 @@ else:
                           [50,0,0], [25,1,1], [50,0,0],
                           [25,1,1], [50,0,0], [25,1,1]])
     
+    HOUSE_LIGHT_ON = [*range(0,10,1)] + [*range(11,21,1)] #+ [*range(24,35,1)]
     event_data = np.asarray([[0,1,1], [50,0,0], [25,1,2],
                           [50,0,3], [25,1,4], [50,0,5],
                           [30,1,6], [60,0,7], [10,1,8],
@@ -641,14 +651,16 @@ else:
     
     
 # TODO: Make start threhsolds an array of values
-seq_len =  4
+seq_len =  5
 repeat_num = 3
-event_data = TM.getEvents(num_samples=4, num_normal = 2, num_exp = 0, repeat = 3)
+event_data = TM.getEvents(num_samples=seq_len, num_normal = 2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=80)
 NUM_EVENTS = len(event_data) 
+HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)]  + [*range(seq_len*2, seq_len * 3 - 1,1)]
+
 # event_noise = np.random.normal(1, .1, event_data.shape)
 # event_data = event_data + event_noise
 #event_data = hey_jude
-HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)]  + [*range(seq_len*2, seq_len * 3 - 1,1)] # + [*range(6, 10,1)] + [*range(12, 16,1)]
+ # + [*range(6, 10,1)] + [*range(12, 16,1)]
 # + [*range(18, 33,1)]
 #HOUSE_LIGHT_ON= [*range(0, 1, 1)] + [*range(2, 3, 1)] + [*range(4, 5, 1)] + [*range(6, 7, 1)] + [*range(8, 9, 1)] + [*range(10, 11, 1)]# + [*range(13, 14, 1)] + [*range(15, 16, 1)] + [*range(17, 18, 1)]
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
@@ -658,15 +670,16 @@ btc_reward=np.empty(NUM_EVENTS)
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
 
-
 for idx, i, in enumerate(event_data[1:seq_len+1,2]):
-    if i in event_data[1:seq_len+1,2]:
+    if i in event_data[1:seq_len+2,2]:
         for r in range(0,repeat_num):
             event_data[idx + (r*seq_len) + 1][2] = event_data[idx][2]+1
 
+event_data[0][2] = event_data[seq_len][2]
+
 
 # Last event, time axis for plotting        
-T = event_data[-1][0]
+T = event_data[HOUSE_LIGHT_ON[-1]+1][0] + 10
 
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,NUM_RAMPS)
@@ -680,7 +693,10 @@ ax1.set_xlim([0,T])
 # ax1.hlines(START_THRESHOLD,0,event_data[1][0], color="green", alpha=0.3)
 
 reproduced_sequence_plot = plt.figure()
-rsp = reproduced_sequence_plot.add_subplot(111)
+rsp = reproduced_sequence_plot.add_subplot(211)
+rsp_lines = reproduced_sequence_plot.add_subplot(212)
+rsp_lines.set_ylim([0,Y_LIM])
+rsp_lines.set_xlim([0,event_data[seq_len][0]+10])
 rsp.set_ylim([0,Y_LIM])
 rsp.set_xlim([0,200])
 
@@ -770,11 +786,13 @@ preallocate memory
      
 # print(40 - len(timer.free_ramps))
 
-for ramp in timer.ramps():
+for ramp in timer.ramps()[np.where(timer.initiating_events==event_data[0][2])]:
     threshold_time = 1/ramp
     # ax2.plot([0, threshold_time], [0,1], marker='o')
     rsp.plot([0, threshold_time], [0,1], marker='x')
     rsp.set_xlim([0,T])
+    rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'green')
+    
 # cap_dist.grid("on")
 
 ax1.set_ylim([0,Y_LIM])

@@ -285,7 +285,7 @@ class TimerModule:
         distribution_weights = P/P.sum(axis=1, keepdims=True) # Probabilities of each event type
         
         # D = np.random.randint(2,size=(num_event_types,num_event_types))
-        centers = np.random.randint(20,50, size=(num_event_types,num_event_types)) # locs, or centers of each distribution
+        centers = np.random.randint(scale_beg,scale_end, size=(num_event_types,num_event_types)) # locs, or centers of each distribution
         deviations = np.full((num_event_types,num_event_types), deviation) # deviations of each distribution
         
         NUM_DISTS = num_event_types * num_event_types # number of distributions
@@ -295,7 +295,7 @@ class TimerModule:
         
         state = np.random.randint(num_event_types) # current state
         samples = np.empty([(num_samples * repeat) + (repeat-1),3]) # initialize array of samples 
-        # samples[0] = [0,break_type,break_type]
+        # samples[0] = [0,state,state]
         first_state = state
         for i in range(num_samples):
             next_state = np.random.multinomial(1,distribution_weights[state,:]) # get next state according to distribution weights
@@ -320,7 +320,7 @@ class TimerModule:
                 samples[j+i] = [time[0],DIST_INDICES[state,next_state],state]
                 state = next_state 
         """
-        return samples
+        return samples[:-1]
 '''
 if something unusual happens, i release some timers 
 if you repeat the stimulus, you can look it up in memory to see when it last happened

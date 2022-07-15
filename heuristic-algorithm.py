@@ -529,14 +529,14 @@ START_THRESHOLD=.5 # Response start threshold
 STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
-BEAT_THE_CLOCK = False
+BEAT_THE_CLOCK = True
 colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
-ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S'] # For converting event types into letters 
+ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','BB','CC'] # For converting event types into letters 
 ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 500
-RAMPS_PER_EVENT = 5
+NUM_RAMPS = 200
+RAMPS_PER_EVENT = 10
 
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
@@ -653,7 +653,7 @@ else:
 # TODO: Make start threhsolds an array of values
 seq_len =  5
 repeat_num = 3
-event_data = TM.getEvents(num_samples=seq_len, num_normal = 2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=80)
+event_data = TM.getEvents(num_samples=seq_len, num_normal = 2, deviation=2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=30)
 NUM_EVENTS = len(event_data) 
 HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)]  + [*range(seq_len*2, seq_len * 3 - 1,1)]
 
@@ -693,13 +693,13 @@ ax1.set_xlim([0,T])
 # ax1.hlines(START_THRESHOLD,0,event_data[1][0], color="green", alpha=0.3)
 
 reproduced_sequence_plot = plt.figure()
-rsp = reproduced_sequence_plot.add_subplot(211)
 rsp_lines = reproduced_sequence_plot.add_subplot(212)
-rsp_lines.set_ylim([0,Y_LIM])
+rsp = reproduced_sequence_plot.add_subplot(211, sharex=rsp_lines)
+rsp_lines.set_ylim([0,1])
 rsp_lines.set_xlim([0,event_data[seq_len][0]+10])
 rsp.set_ylim([0,Y_LIM])
 rsp.set_xlim([0,200])
-
+hist_lines = []
 # captured_distribution_plot = plt.figure()
 # cap_dist = captured_distribution_plot.add_subplot(111)
 
@@ -722,6 +722,7 @@ for idx, event in enumerate(event_data[:-1]):
             ax2.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
     else:
         ax1.text(event[0],2.1,'End')
+            
     if house_light:
         # Plot house light bar
         ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
@@ -774,7 +775,10 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_idx+=1
             else:
                 house_light_interval=False
+    
+            
        
+    
     
 # reproduce_sequence_(timer, event_data, rsp)    
    
@@ -785,14 +789,9 @@ preallocate memory
 """
      
 # print(40 - len(timer.free_ramps))
+threhold_times = []
 
-for ramp in timer.ramps()[np.where(timer.initiating_events==event_data[0][2])]:
-    threshold_time = 1/ramp
-    # ax2.plot([0, threshold_time], [0,1], marker='o')
-    rsp.plot([0, threshold_time], [0,1], marker='x')
-    rsp.set_xlim([0,T])
-    rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'green')
-    
+rsp_lines.hist(hist_lines)
 # cap_dist.grid("on")
 
 ax1.set_ylim([0,Y_LIM])
@@ -802,7 +801,23 @@ ax1.set_xlabel("Time")
 ax1.grid('on')
 ax2.grid('on')
 #ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
-ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
+# ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
+for ramp in timer.ramps()[np.where(timer.initiating_events==event_data[0][2])]:
+     threshold_time = 1/ramp
+     # ax2.plot([0, threshold_time], [0,1], marker='o')
+     rsp.plot([0, threshold_time], [0,1], marker='x')
+     # rsp.set_xlim([0,T])
+     # rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'green')
+     threhold_times.append(threshold_time)
+    
+# Histogram for threshold times. bins <n> * 5 gives some precision in the distribution of bins
+rsp_lines.hist(threhold_times, bins=len(hist_lines)*5, density=True, facecolor='g', alpha=0.75) 
+
+# July 5
+# TODO: Make a histogram of hitting times DONE
+# Bring back the model responding
+
+
 
 # nx.draw(ramp_graph, with_labels = True)
 # plt.savefig("ramp_graph_spectral.png")

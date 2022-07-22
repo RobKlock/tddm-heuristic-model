@@ -55,6 +55,39 @@ def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     return act
 
+def activationAtIntervalEndEulerian(timer, ramp_index, interval_length, c, dt):
+    # Simulate DDM process for activation amount
+    # Change act to activation
+    
+    T = int(interval_length/dt)
+    """
+    acts = np.ones([len(ramp_index), T]) * weight * dt
+    
+    arr = np.random.normal(0,1,T) * noise * np.sqrt(dt)
+    
+    drift_arr = np.ones(T) * weight * dt
+    act_arr = drift_arr + arr
+    cum_act_arr = np.cumsum(act_arr)
+   
+    hit_time = np.argmax(cum_act_arr>threshold) 
+    
+    for i in range(0, len(ramp_index)):
+        for t in range(1,T):
+            acts[i][t] = acts[i][t-1] + c * np.sqrt(acts[i][t-1]) * np.random.normal(0, 1) * math.sqrt(interval_length)
+    """
+    
+    acts = []
+    for ramp in ramp_index:
+        arr = np.random.normal(0,1,T) * c * np.sqrt(dt)
+        
+        drift_arr = np.full(T, timer.timers[ramp] * dt)
+        act_arr = drift_arr + arr
+        
+        cum_act_arr = np.cumsum(act_arr)
+        
+        hit_time = np.argmax(cum_act_arr>1) 
+        acts.append(cum_act_arr[:hit_time])
+    return acts
 
 # Generate when it will cross threshold
 # Paramters:
@@ -248,7 +281,7 @@ def respond(timer_value, event_time, next_event, ax1, idx):
         # ax1.text(response_period[1],1.5,str(idx))
     
     ax1.plot(responses, np.ones(len(responses)), 'x') 
-    responses and ax1.text(responses[0],1.2,str(idx))
+    # responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
 # Use timer indices in Timer object instead of passing them in parameters
@@ -521,7 +554,7 @@ dt = 0.1
 N_EVENT_TYPES= 10 # Number of event types (think, stimulus A, stimulus B, ...)
 # NUM_EVENTS=17#  Total amount of events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.005# Internal noise - timer activation
+NOISE=0.02# Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 5 # Amount of timers that must be active to respond
@@ -529,7 +562,7 @@ START_THRESHOLD=.5 # Response start threshold
 STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
-BEAT_THE_CLOCK = True
+BEAT_THE_CLOCK = False
 colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','BB','CC'] # For converting event types into letters 
 ramp_graph=nx.Graph()
@@ -745,10 +778,16 @@ for idx, event in enumerate(event_data[:-1]):
                 active_ramp_indices = np.append(initiating_active_indices, timer.free_ramps)
                 
                 house_light_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE)
-                active_timer_value = activationAtIntervalEnd(timer, initiating_active_indices, next_house_light_event_time - event_time, NOISE)
-                # Poisson sequence responses (not fully working yet)
-                # responses = respond(house_light_timer_value, event_time, next_house_light_event_time, ax1, idx)
                 
+                active_timer_value = activationAtIntervalEndEulerian(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE, dt)
+                
+                # Poisson sequence responses (not fully working yet)
+                # responses = respond(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
+                for path in active_timer_value:
+                    #path = path + np.full(len(path), event_time)
+                    if len(path) != 0:
+                        ax1.plot(np.linspace(event_time,next_house_light_event_time, num=len(path)), path, c=colors[next_stimulus_type], alpha=0.3)
+                    
                 if BEAT_THE_CLOCK:
                     if not (event_time==0):
                         response_time = beat_the_clock_threshold_time(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
@@ -763,14 +802,16 @@ for idx, event in enumerate(event_data[:-1]):
                         btc_reward[idx]=reward
                     
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
+                '''
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
                     if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
                         # if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
-                        ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type], alpha=0.3)
-                        ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        # ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type], alpha=0.3)
+                        # ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        
                         if val < 5:
                             ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
-        
+                '''        
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
             else:
@@ -811,7 +852,7 @@ for ramp in timer.ramps()[np.where(timer.initiating_events==event_data[0][2])]:
      threhold_times.append(threshold_time)
     
 # Histogram for threshold times. bins <n> * 5 gives some precision in the distribution of bins
-rsp_lines.hist(threhold_times, bins=len(hist_lines)*5, density=True, facecolor='g', alpha=0.75) 
+rsp_lines.hist(threhold_times, bins=len(threhold_times)*5, density=True, facecolor='g', alpha=0.75) 
 
 # July 5
 # TODO: Make a histogram of hitting times DONE

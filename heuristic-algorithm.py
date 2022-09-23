@@ -55,6 +55,27 @@ def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     return act
 
+def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next_stimulus_type, c, ax2):
+    # Simulate DDM process for activation amount
+    # Change act to activation
+    delta = 0.5
+    '''
+    assigned_ramps = []
+    for timer_idx in ramp_index:
+        if timer.terminating_events[ramp_index] == next_stimulus_type:
+            assigned_ramps.append(timer_idx)
+    '''       
+    act = timer.timers[ramp_index] * interval_length
+    
+    for i in range (0, len(act)):
+        act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
+    f_act = act * act
+    
+    for timer_act in act:
+        hier_act = timer_act + 1/((act.size)-1) * delta * f_act[act != timer_act].sum()
+
+    return act
+
 def activationAtIntervalEndEulerian(timer, ramp_index, interval_length, c, dt):
     # Simulate DDM process for activation amount
     # Change act to activation
@@ -554,7 +575,7 @@ dt = 0.1
 N_EVENT_TYPES= 10 # Number of event types (think, stimulus A, stimulus B, ...)
 # NUM_EVENTS=17#  Total amount of events
 Y_LIM=2 # Vertical plotting limit
-NOISE=0.02# Internal noise - timer activation
+NOISE=0.0 # Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 5 # Amount of timers that must be active to respond
@@ -568,9 +589,9 @@ ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
 ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 200
+NUM_RAMPS = 300
 RAMPS_PER_EVENT = 10
-
+event_data = []
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES)
 #event_data = TM.getSamples(NUM_EVENTS, num_normal = N_EVENT_TYPES, scale_beg = 20, scale_end = 30)
 # [Event Time, Event Type, Stimulus Type]
@@ -636,23 +657,28 @@ hey_jude=np.asarray([
     [note_lengths["sixteenth"], notes["A"], notes["A"]]  # ter
     ]) 
 
-random_seq = False
+random_seq = True
 
 # Begin simulation
 if random_seq:
+    
     seq_length = 7
     random_samples = TM.getSamples(seq_length, num_normal = 3, seed = 12, scale_beg = 20, scale_end = 50)
     event_data = [[0,0,0]]
     for sample in random_samples:
         event_data.append([sample[0], sample[1], sample[2]])
         
-    event_data = event_data + event_data[1:] + event_data[1:] + event_data[1:]
-    event_data = np.asarray(event_data)
+    # event_data = event_data + event_data[1:] + event_data[1:] + event_data[1:]
+    # event_data = np.asarray(event_data)
     HOUSE_LIGHT_ON = [*range(0,seq_length-1,1)] + [*range(seq_length,(seq_length*2)-1,1)] + [*range(seq_length*2,(seq_length*3)-3,1)]
-
+    
+    event_data = TM.getEvents(num_samples=seq_length, num_normal = 2, deviation=2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=30)
+    
 else:
     # TODO: Change this to arange
-    HOUSE_LIGHT_ON = [*range(0,4,1)] + [*range(6,10,1)] + [*range(12,16,1)] + [*range(18,22,1)] + [*range(24,28,1)]
+    HOUSE_LIGHT_ON = [*range(0,1,1)] + [*range(2,3,1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)]
+    # HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(4,6,1)] + [*range(8,10,1)] 
+    
     event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
                           [50,0,0], [25,1,1], [50,0,0], 
                           [25,1,1], [50,0,0], [25,1,1], 
@@ -665,30 +691,30 @@ else:
                           [50,0,0], [25,1,1], [50,0,0],
                           [25,1,1], [50,0,0], [25,1,1]])
     
-    HOUSE_LIGHT_ON = [*range(0,10,1)] + [*range(11,21,1)] #+ [*range(24,35,1)]
-    event_data = np.asarray([[0,1,1], [50,0,0], [25,1,2],
-                          [50,0,3], [25,1,4], [50,0,5],
-                          [30,1,6], [60,0,7], [10,1,8],
-                          [100,0,9], [25,1,10], 
+    # HOUSE_LIGHT_ON = [*range(0,10,1)] + [*range(11,21,1)] #+ [*range(24,35,1)]
+    # event_data = np.asarray([[0,1,1], [50,0,0], [25,1,2],
+    #                       [50,0,3], [25,1,4], [50,0,5],
+    #                       [30,1,6], [60,0,7], [10,1,8],
+    #                       [100,0,9], [25,1,10], 
                           
-                          [25,1,1], [50,0,0], [25,1,2], 
-                          [50,0,3], [25,1,4], [50,0,5],
-                          [30,1,6], [60,0,7], [10,1,8],
-                          [100,0,9], [25,1,10], 
+    #                       [25,1,1], [50,0,0], [25,1,2], 
+    #                       [50,0,3], [25,1,4], [50,0,5],
+    #                       [30,1,6], [60,0,7], [10,1,8],
+    #                       [100,0,9], [25,1,10], 
                           
-                          [25,1,1], [50,0,0], [25,1,2], 
-                          [50,0,3], [25,1,4], [50,0,5],
-                          [30,1,6], [60,0,7], [10,1,8],
-                          [100,0,9], [25,1,10], ])
+    #                       [25,1,1], [50,0,0], [25,1,2], 
+    #                       [50,0,3], [25,1,4], [50,0,5],
+    #                       [30,1,6], [60,0,7], [10,1,8],
+    #                       [100,0,9], [25,1,10], ])
                           
     
     
 # TODO: Make start threhsolds an array of values
-seq_len =  5
-repeat_num = 3
-event_data = TM.getEvents(num_samples=seq_len, num_normal = 2, deviation=2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=30)
+seq_len =  seq_length
+repeat_num = 4
+
 NUM_EVENTS = len(event_data) 
-HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)]  + [*range(seq_len*2, seq_len * 3 - 1,1)]
+# HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)] # + [*range(seq_len*2, seq_len * 3 - 1,1)] + [*range(seq_len*3, seq_len * 4 - 1,1)]
 
 # event_noise = np.random.normal(1, .1, event_data.shape)
 # event_data = event_data + event_noise
@@ -699,15 +725,17 @@ HOUSE_LIGHT_ON= [*range(0, seq_len-1,1)] + [*range(seq_len, seq_len+seq_len-1,1)
 #HOUSE_LIGHT_ON= [*range(0, 2, 1)] + [*range(4,6,1)] + [*range(8,10,1)] + [*range(12,14,1)] # + [*range(14,19, 1)] + [*range(20,25,1)] + [*range(26,31,1)] # [*range(6, 8, 1)] + [*range(9,11,1)] + [*range(13,16,1)] + [*range(17, 20, 1)] + [*range(21, 24, 1)]#  + [*range(12, 16, 1)] + [*range(18, 22, 1)]
 btc_reward=np.empty(NUM_EVENTS)
 
-
+# plotting_events = event_data
 error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
 
+'''
 for idx, i, in enumerate(event_data[1:seq_len+1,2]):
     if i in event_data[1:seq_len+2,2]:
         for r in range(0,repeat_num):
             event_data[idx + (r*seq_len) + 1][2] = event_data[idx][2]+1
 
+'''
 event_data[0][2] = event_data[seq_len][2]
 
 
@@ -717,8 +745,12 @@ T = event_data[HOUSE_LIGHT_ON[-1]+1][0] + 10
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,NUM_RAMPS)
 fig = plt.figure()
-ax1 = fig.add_subplot(211) # Subplot for timer activations and events
-ax2 = fig.add_subplot(212, sharex=ax1) # Subplot for error (not yet calculated)
+ax3 = fig.add_subplot(211) # Subplot for timer activations and events
+ax2 = fig.add_subplot(212, sharex=ax3) # Subplot for error (not yet calculated)
+
+simple_learning_fig = plt.figure()
+simple_learning_fig.suptitle('Simple Learning Sequence', fontsize=16)
+ax1 = simple_learning_fig.add_subplot(111)
 
 ax1.set_ylim([0,Y_LIM])
 ax2.set_ylim([0,Y_LIM])
@@ -726,9 +758,10 @@ ax1.set_xlim([0,T])
 # ax1.hlines(START_THRESHOLD,0,event_data[1][0], color="green", alpha=0.3)
 
 reproduced_sequence_plot = plt.figure()
+reproduced_sequence_plot.suptitle('Reproduced Sequence', fontsize=16)
 rsp_lines = reproduced_sequence_plot.add_subplot(212)
 rsp = reproduced_sequence_plot.add_subplot(211, sharex=rsp_lines)
-rsp_lines.set_ylim([0,1])
+# rsp_lines.set_ylim([0,.5])
 rsp_lines.set_xlim([0,event_data[seq_len][0]+10])
 rsp.set_ylim([0,Y_LIM])
 rsp.set_xlim([0,200])
@@ -736,6 +769,8 @@ hist_lines = []
 # captured_distribution_plot = plt.figure()
 # cap_dist = captured_distribution_plot.add_subplot(111)
 
+timer_plot_legend_free = {}
+timer_plot_legend_assigned = {}
 
 ''' Simulation Start '''
 # At each event e_i
@@ -746,19 +781,20 @@ for idx, event in enumerate(event_data[:-1]):
     stimulus_type = int(event[2])
     next_event = event_data[idx+1][0]
     next_stimulus_type=int(event_data[idx+1][2])
+    NUM_EVENTS=12
     # Plot event times and labels
     if idx < (NUM_EVENTS - 1):
-            ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
-            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
-            
-            ax2.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
-            ax2.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
-    else:
-        ax1.text(event[0],2.1,'End')
+        ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
+        ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
+        
+        ax2.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
+        ax2.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
+    # else:
+    #    ax1.text(event[0],2.1,'End')
             
     if house_light:
         # Plot house light bar
-        ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
+        house_light_bar = ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
         ax2.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
         # Look forward to all other intervals before house light turns off and start updating weights
         house_light_idx = idx + 1
@@ -778,16 +814,17 @@ for idx, event in enumerate(event_data[:-1]):
                 active_ramp_indices = np.append(initiating_active_indices, timer.free_ramps)
                 
                 house_light_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE)
-                
-                active_timer_value = activationAtIntervalEndEulerian(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE, dt)
-                
+                house_light_hierarchical_value = activationAtIntervalEndHierarchical(timer, initiating_active_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, ax2)
+                # active_timer_value = activationAtIntervalEndEulerian(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE, dt)
+                active_timer_value = activationAtIntervalEndHierarchical(timer, active_ramp_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, dt)
                 # Poisson sequence responses (not fully working yet)
                 # responses = respond(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
+                '''
                 for path in active_timer_value:
-                    #path = path + np.full(len(path), event_time)
+                    path_length = event_time + path.size * dt
                     if len(path) != 0:
-                        ax1.plot(np.linspace(event_time,next_house_light_event_time, num=len(path)), path, c=colors[next_stimulus_type], alpha=0.3)
-                    
+                        ax1.plot(np.linspace(event_time,path_length, num=len(path)), path, c=colors[next_stimulus_type], alpha=0.3)
+                '''
                 if BEAT_THE_CLOCK:
                     if not (event_time==0):
                         response_time = beat_the_clock_threshold_time(active_timer_value, event_time, next_house_light_event_time, ax1, idx)
@@ -802,26 +839,30 @@ for idx, event in enumerate(event_data[:-1]):
                         btc_reward[idx]=reward
                     
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax2, idx)
-                '''
+                for value in house_light_hierarchical_value:
+                    ax2.plot([next_house_light_event_time], [value], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
                 for i, val in zip(active_ramp_indices, house_light_timer_value):
                     if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
-                        # if (val<STOP_THRESHOLD and val>START_THRESHOLD) or i in timer.free_ramps:
-                        # ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type], alpha=0.3)
-                        # ax1.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                        if i in timer.free_ramps:
+                            timer_plot_legend_free[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle='--', c=colors[next_stimulus_type])
                         
+                        else:
+                            if (val<STOP_THRESHOLD and val>START_THRESHOLD):
+                                timer_plot_legend_assigned[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type])
+                                ax1.plot([next_house_light_event_time], [val], marker='o', c=colors[next_stimulus_type], markeredgecolor='black', markeredgewidth=1, alpha=0.2) 
+                            
+                            
+                        '''
                         if val < 5:
                             ax2.plot([next_house_light_event_time], [val], marker='o',c=colors[next_stimulus_type], alpha=0.5) 
-                '''        
+                       '''
                 # Contiue to the next event in the house light interval
                 house_light_idx+=1
             else:
                 house_light_interval=False
     
-            
-       
     
-    
-# reproduce_sequence_(timer, event_data, rsp)    
+reproduce_sequence_(timer, event_data, rsp)    
    
 """
 Overall: watch for side effects
@@ -830,35 +871,72 @@ preallocate memory
 """
      
 # print(40 - len(timer.free_ramps))
-threhold_times = []
+threshold_times = []
 
 rsp_lines.hist(hist_lines)
 # cap_dist.grid("on")
 
 ax1.set_ylim([0,Y_LIM])
-ax1.set_xlim([0,T])
+ax1.set_xlim([0,400])
 ax1.set_ylabel("Activation")
 ax1.set_xlabel("Time")
+ax1.legend(handles=[timer_plot_legend_free[1][0], timer_plot_legend_assigned[1][0], timer_plot_legend_free[0][0], timer_plot_legend_assigned[0][0], house_light_bar[0]], labels=["A-available ramps", "A-assigned ramps", "B-available ramps", "B-assigned ramps", "attention period"], loc='lower left')
+# extent = ax2.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+
+# fig.savefig('ax2_figure.png')
+
 ax1.grid('on')
 ax2.grid('on')
 #ax1.hlines(START_THRESHOLD,0,T, color="green", alpha=0.3)
 # ax1.hlines(STOP_THRESHOLD,0,T, color="red", alpha=0.3)
-for ramp in timer.ramps()[np.where(timer.initiating_events==event_data[0][2])]:
-     threshold_time = 1/ramp
-     # ax2.plot([0, threshold_time], [0,1], marker='o')
-     rsp.plot([0, threshold_time], [0,1], marker='x')
-     # rsp.set_xlim([0,T])
-     # rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'green')
-     threhold_times.append(threshold_time)
-    
+repro_figure_timer_1 = {}
+repro_figure_timer_2 = {}
+
+for ramp in timer.ramps()[np.where(timer.initiating_events==0)]:
+    threshold_time = 1/ramp
+    # ax2.plot([0, threshold_time], [0,1], marker='o')
+    rsp.plot([0, threshold_time], [0,1], marker='x', c = 'blue')
+    # rsp.set_xlim([0,T])
+    # rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'green')
+    # threshold_times.append(threshold_time)
+     
+for ramp in timer.ramps()[np.where(timer.initiating_events==1)]:
+    threshold_time = 1/ramp
+    # ax2.plot([0, threshold_time], [0,1], marker='o')
+    rsp.plot([0, threshold_time], [0,1], marker='x', c='red')
+    # rsp.set_xlim([0,T])
+    # rsp_lines.vlines(threshold_time, 0, Y_LIM, color = 'grsseen')
+    # threshold_times.append(threshold_time)
+
+
+# rsp_lines.legend(handles=[threshold_times[0], threshold_times[1]], labels=["First Event Ramps", "Second Event Ramps"], loc='lower left')
+
 # Histogram for threshold times. bins <n> * 5 gives some precision in the distribution of bins
-rsp_lines.hist(threhold_times, bins=len(threhold_times)*5, density=True, facecolor='g', alpha=0.75) 
+# rsp_lines.hist(threshold_times, bins=len(threshold_times)*5, density=True, facecolor='g', alpha=0.75) 
+a_indices = event_data[np.where(event_data[:,2] == 0)][0]
+event_times_plot=[]
+for i in range(0,len(a_indices)-1):
+    event_times_plot.append(event_data[i+1][0] - event_data[i][0])
+
+b_events = event_data[np.where(event_data[:,2] == 1)][0]
+rsp_lines.hist(event_times_plot, bins=15, density=True, facecolor='g', alpha=0.75) 
+
+# rsp_lines.savefig('hitting-times.png')
+simple_learning_fig.savefig('multi-sequence-simple-learning-demo.jpeg', dpi=600)
 
 # July 5
 # TODO: Make a histogram of hitting times DONE
 # Bring back the model responding
 
 
+# July 29
+# A few sequences that demonstrate learning
+# Good figures. Look at Rivest's figures in his papers. Look at some examples
+# without synchronization
+# plot of two histograms that compares the hitting times of the timers to the occurances of the events 
+# some examples without the house light to show how the model works
+# some examples with the house light to show that
+# some examples of synchronization
 
 # nx.draw(ramp_graph, with_labels = True)
 # plt.savefig("ramp_graph_spectral.png")

@@ -294,14 +294,19 @@ class TimerModule:
         break_type = num_samples+1
         
         state = np.random.randint(num_event_types) # current state
+        print(f'state: {state}')
         samples = np.empty([(num_samples * repeat) + (repeat-1),3]) # initialize array of samples 
-        # samples[0] = [0,state,state]
+        next_state = np.random.multinomial(1,distribution_weights[state,:])
+        next_state = np.where(next_state==1)[0][0]
+
+        samples[0] = [0,DIST_INDICES[state,next_state],state]
         first_state = state
         for i in range(num_samples):
+            print(f'state: {state}')
             next_state = np.random.multinomial(1,distribution_weights[state,:]) # get next state according to distribution weights
             next_state = np.where(next_state==1)[0][0] # index location of distribution
             # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]
-            time = (np.random.normal(centers[state,next_state], 7,1) * deviations[state,next_state]) # sample from normal dist to get time
+            time = (np.random.normal(centers[state,next_state], 1,1) * deviations[state,next_state]) # sample from normal dist to get time
             #+ (np.random.exponential(T[state,next_state]) * 1-D[state,next_state])
             for j in range(0,repeat):
                 samples[i+(num_samples*j) + 1] = [time[0],DIST_INDICES[state,next_state],state] # add sample in form [relative time, event type, stimulus type]
@@ -320,6 +325,10 @@ class TimerModule:
                 samples[j+i] = [time[0],DIST_INDICES[state,next_state],state]
                 state = next_state 
         """
+       # for rep in range (0, num_repeat):
+        samples[0][1] = samples[repeat-2][1]
+        samples[0][2] = samples[repeat-2][2]
+       
         return samples[:-1]
 '''
 if something unusual happens, i release some timers 

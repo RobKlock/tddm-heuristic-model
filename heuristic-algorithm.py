@@ -22,17 +22,19 @@ proper weight, s_1, and s_2. They are chosen randomly
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import sys
+# import sys
 import random # TODO: Just use np.random instead of random.random
 # TODO: Specify the seed so random things are generated again
 
 from timer_module import TimerModule as TM
-from labellines import labelLine, labelLines
-from scipy.stats import invgauss   
-from scipy.stats import trim_mean
-import matplotlib.colors as mcolors
-import networkx as nx
-import time
+# from labellines import labelLine, labelLines
+# from scipy.stats import invgauss   
+# from scipy.stats import trim_mean
+# # from statistics import NormalDist
+# import matplotlib.colors as mcolors
+# import networkx as nx
+# import time
+# import scipy.signal 
 
 
 
@@ -250,6 +252,7 @@ def coin_flip_update_rule(timer_values, timer, timer_indices, start_time, end_ti
 
 def respond(timer_value, event_time, next_event, ax1, idx):
     # Given all ramp vaues, respond when K are between start and stop range
+    # K is a global declared later on, tyically == 5
     
     # Find start threshold times for each ramp
     start_threshold_times = start_threshold_time(timer_value, next_event-event_time)
@@ -291,16 +294,23 @@ def respond(timer_value, event_time, next_event, ax1, idx):
     r = list(generate_responses(next_event-event_time))
     r.insert(0, event_time)
     r=list(np.cumsum(r))
-    
+    # print('===')
+    # print(f'{event_time} / {next_event}')
     for response_period in response_periods:
-        responses.extend([i for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
+        responses.extend([int(i) for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
+        # print(r)
     
     ax1.plot(responses, np.ones(len(responses)), 'x') 
     # responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
+# Gives reward for reward array based on the offset from the event occurance
+def timing_reward(offset):
+    return 1/(2**(.1*offset))
+    # \frac{1}{2^{-x}}
+
 # Use timer indices in Timer object instead of passing them in parameters
-def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, ramp_graph, ax2, external_idx, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
+def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, ax2, external_idx, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
     # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
@@ -514,6 +524,19 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
     # Plot reproduced sequence
     return 0
 
+# def expected_gain(target_time, current_time, short_length, long_length, short_prob, long_prob, reward_schedule):
+    
+#     g_-Ts = -.2 # incorrect short trial
+#     g_Ts = 1 # correct short trial
+#     g_-Tl = -.2 # incorrect long trial
+#     g_Tl = 1.2 # correct long trial
+    
+#     p-Ts = short_prob
+#     p-Tl = long_prob
+#     # w = 
+#     # dist = NormalDist(mu=target_time,  )
+    
+
 
 ''' Global variables '''
 dt = 0.1
@@ -531,12 +554,18 @@ ERROR_ANALYSIS_RESPONSES=[]
 BEAT_THE_CLOCK = False
 colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','BB','CC'] # For converting event types into letters 
-ramp_graph=nx.Graph()
+# ramp_graph=nx.Graph()
 SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
 NUM_RAMPS = 300
 RAMPS_PER_EVENT = 10
+reward_window_plot = 1600
+reward_window_sim = 1600
+x_lb = np.linspace(-reward_window_plot * dt,0, reward_window_plot)
+exp_weighted_average = np.exp(x_lb * .01)
+plt.plot(x_lb, exp_weighted_average)
 event_data = []
+
 
 random_seq = False
 
@@ -593,6 +622,7 @@ else:
 # TODO: Make start threhsolds an array of values
 seq_len =  4
 repeat_num = 3
+penalty=.02
 
 NUM_EVENTS = len(event_data) 
 btc_reward=np.empty(NUM_EVENTS)
@@ -611,16 +641,21 @@ timer=TM(1,NUM_RAMPS)
 
 simple_learning_fig = plt.figure()
 # simple_learning_fig.suptitle('Simple Learning Sequence', fontsize=16)
-ax1 = simple_learning_fig.add_subplot(211)
-ax2 = simple_learning_fig.add_subplot(212, sharex = ax1)
+ax1 = simple_learning_fig.add_subplot(311)
+ax2 = simple_learning_fig.add_subplot(312, sharex = ax1)
+ax3 = simple_learning_fig.add_subplot(313, sharex = ax1)
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 
 ax2.set_ylim([0,1])
 ax2.set_xlim([0,T])
 
+# ax3.set_ylim([0,1])
+ax3.set_xlim([0,T])
+
 ax2.plot()
 
+reward_arr_plot = np.zeros(int(event_data[HOUSE_LIGHT_ON[-1]+1][0] / dt))
 
 timer_plot_legend_free = {}
 timer_plot_legend_assigned = {}
@@ -633,17 +668,24 @@ reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.
 # Define hidden states
 hidden_states = [175, 325, 475]
 for hidden_state in hidden_states:
-    reward_arr[hidden_state] = 1
-    for i in range(1,10):
-        reward_arr[hidden_state-i] = 1 - (i*.1)
-    
+    reward_arr[hidden_state] = 2
+    # for i in range(1,20):
+        # reward_arr[hidden_state-i] = 1 - (i*.1)
+        # reward_arr[hidden_state-i] = timing_reward(i)
+    #    reward_arr[hidden_state-i] = 2
 # For event, add a large amount of reward at the event and a little right before it 
 for event in event_data:
-    reward_arr[event[0]] = 1
-    for i in range(1,10):
-        reward_arr[event[0]-i] = 1 - (i*.1)
+    # reward_arr[event[0]] = 1
+    # for i in range(1,5):
+        # reward_arr[event[0]-i] = 1 - (i*.1)
+        # reward_arr[event[0]-i] = timing_reward(i)
+    reward_arr[event[0] - 1] = 2
+
+reward_arr[0] = 0 
     
-ax2.plot(reward_x_axis, reward_arr)
+ax2.plot(reward_x_axis, reward_arr, label="reward")
+for state in hidden_states:
+    ax2.plot(state, .9, marker = '*', color='r', label="hidden state")
 ''' Simulation Start '''
 # At each event e_i
 for idx, event in enumerate(event_data[:-1]):    
@@ -685,6 +727,7 @@ for idx, event in enumerate(event_data[:-1]):
                 
                 house_light_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE)
                 house_light_hierarchical_value = activationAtIntervalEndHierarchical(timer, initiating_active_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, ax1)
+                house_light_responding_values = activationAtIntervalEnd(timer, initiating_active_indices, next_house_light_event_time - event_time, NOISE)
                 
                 active_timer_value = activationAtIntervalEndHierarchical(timer, active_ramp_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, dt)
                 
@@ -698,13 +741,84 @@ for idx, event in enumerate(event_data[:-1]):
                         START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE, btc_reward, reward)
                         
                         btc_reward[idx]=reward
-                    
-                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ramp_graph, ax1, idx)
+                if idx > 0:
+                    responses = respond(house_light_responding_values, event_time, next_house_light_event_time, ax1, idx)
+                    reward = reward_arr[responses]
+                    pos_reward = np.where(reward > 0)[0]
                 
-                response_time = (event_time + next_house_light_event_time // 2) 
-                reward = reward_arr[response_time]
-                print(reward)
-                ax1.plot([response_time],[.8], marker='x')
+                    # if pos_reward.shape[0] > 0:
+                    #     ax2.vlines(responses[pos_reward], reward[pos_reward])
+                    
+                    # print(reward) 
+                    # print(responses)
+                    
+                    for i,r in enumerate(reward):
+                       if int(responses[i]/dt) < reward_arr_plot.shape[0]:
+                           reward_arr_plot[int(responses[i]/dt)] = r - penalty
+                    
+                    reward_penalty = np.full(reward.shape[0], penalty)
+                    
+                    reward_end = np.sum(reward) + np.sum(reward_penalty)
+                    ax2.plot(responses,reward, marker='x', color = 'g')
+                    
+                    # Look back and get exp moving average to get non-causal reward rate
+                    for t in range (int(reward_arr_plot[i]-reward_window_plot/dt), int(reward_arr_plot[i]/dt) ):
+                        exp_reward_rate = np.mean(reward_arr_plot[-reward_window_plot:] * exp_weighted_average)
+                        # Positiv reward, respond more
+                        if exp_reward_rate > 0:
+                            START_THRESHOLD -= 0.0001
+                        
+                        # Negative reward, respond less
+                        if exp_reward_rate < 0:
+                            START_THRESHOLD += 0.0001
+                            
+                        
+                    ax1.plot(event_time+i,START_THRESHOLD, marker='.', color = 'g')
+                            
+                    
+                        # np.mean(reward_arr_plot[i-window:i] * kern)
+                    
+                update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ax1, idx)
+                
+                # response_time = (event_time + next_house_light_event_time // 2) 
+                # reward = reward_arr[responses]
+                
+                '''
+                if reward.shape[0] > 0:
+                    penalty = np.full(reward.shape[0], penalty)
+                
+                    reward = np.subtract(reward,penalty)
+                '''
+                
+                # for index, r in enumerate(reward):
+                #     reward_arr_plot[int(event_time/dt) + int(index/dt)] = r
+                # reward_arr_plot.extend(reward)
+                
+                # pos_reward = np.where(reward > 0)[0]
+                
+                # # if pos_reward.shape[0] > 0:
+                # #     ax2.vlines(responses[pos_reward], reward[pos_reward])
+                
+                # # print(reward) 
+                # # print(responses)
+                
+                # for i,r in enumerate(reward):
+                #    if int(responses[i]/dt) < reward_arr_plot.shape[0]:
+                #        reward_arr_plot[int(responses[i]/dt)] = r - penalty
+                
+                # reward_penalty = np.full(reward.shape[0], penalty)
+                
+                # reward_end = np.sum(reward) + np.sum(reward_penalty)
+                # # print(reward_end)
+                # # print(reward_end)
+                
+                # # ax1.plot([response_time],[.8], marker='x', color = 'g')
+                # # in between responses an first interval, pad with zeros
+               
+                # # if responses
+                # # zeros_reward_arr = np.linspace(0, event_time, (responses[0]-event_time) / dt)
+                
+                # ax2.plot(responses,reward, marker='x', color = 'g')
                 
                 for value in house_light_hierarchical_value:
                     ax1.plot([next_house_light_event_time], [value], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
@@ -723,7 +837,21 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_idx+=1
             else:
                 house_light_interval=False
+  
+window_size = 100
+def gkern(l=window_size, sig=1.):
+    """\
+    creates gaussian kernel with side length `l` and a sigma of `sig`
+    """
+    ax = np.linspace(-(l - 1) / 2., (l - 1) / 2., l)
+    gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
     
+    # gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
+    # kernel = np.outer(gauss, gauss)
+    return gauss # kernel / np.sum(kernel)
+
+kernel = gkern()
+
 threshold_times = []
 
 ax1.set_ylim([0,Y_LIM])
@@ -731,5 +859,127 @@ ax1.set_xlim([0,400])
 ax1.set_ylabel("Activation")
 ax1.set_xlabel("Time")
 
+
+# reward_sliding_windows = np.lib.stride_tricks.sliding_window_view(reward_arr_plot, window_size)
+
+reward_arr_x = np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), reward_arr_plot.shape[0])
+reward_sliding_windows_vals = np.zeros(reward_arr_plot.shape[0])
+
+for i in range(window_size):
+    reward_sliding_windows_vals[i] =  np.sum(reward_arr_plot[:i] * kernel[:i])
+    
+    if i == 0:  
+        reward_sliding_windows_vals[-1] = np.sum(reward_arr_plot[-1:]) # * kernel[:1])
+    else:
+        reward_sliding_windows_vals[-i] = np.sum(reward_arr_plot[-i:]) # * kernel[:i])
+
+#for i in range(window_size, reward_arr_plot.shape[0] - window_size):
+    #reward_sliding_windows_vals[i] =  np.sum(reward_arr_plot[i:i+window_size]) #* kernel)
+
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='full')
+    return y_smooth
+
+def moving_average(a, n=3) :
+    ret = np.cumsum(a, dtype=float)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
+
+''' Various plotting for reward rate estimation ''' 
+
+# win_len = 20
+# for i in range(0, 5250-win_len):
+#     reward_arr_plot[i] = np.mean(reward_arr_plot[i:i+win_len])
+
+#for i in 
+# ax3.plot(reward_arr_x, smooth(reward_arr_plot, 40))
+# moving_average_reward = moving_average(reward_arr_plot, 8)
+moving_avg_1 = []
+moving_avg_2 = []
+moving_avg_3 = []
+
+
+window_l = 100
+window_r = 100
+ax1.plot([0,event_data[HOUSE_LIGHT_ON[-1]+1][0]], [START_THRESHOLD, START_THRESHOLD], color = 'green', alpha=.5)
+ax1.plot([0,event_data[HOUSE_LIGHT_ON[-1]+1][0]], [STOP_THRESHOLD, STOP_THRESHOLD], color = 'red', alpha=.5)
+
+for i in range(window_l,reward_arr_plot.shape[0]-window_r):
+    moving_avg_1.append(np.sum(reward_arr_plot[i-window_l:i+window_r])/window_r)
+    moving_avg_2.append(np.sum(reward_arr_plot[i-(window_l*2):i+(window_r*2)])/(window_r*2))
+    moving_avg_3.append(np.sum(reward_arr_plot[i-(window_l*4):i+(window_r*4)])/(window_r*4))
+    
+#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_1)), moving_avg_1)
+#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_2)), moving_avg_2)
+#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_3)), moving_avg_3)
+# ax3.plot(np.linspace(0,len(moving_avg_1)*dt, len(moving_avg_1)), moving_avg_1)
+
+test_window_size = 500
+window_avg_values=[]
+
+import scipy.stats as st
+def gkern(kernlen=20, nsig=3):
+    """Returns a 2D Gaussian kernel."""
+
+    x = np.linspace(-nsig, nsig, kernlen+1)
+    kern1d = np.diff(st.norm.cdf(x))
+    kern2d = np.outer(kern1d, kern1d)
+    return kern2d/kern2d.sum()
+
+
+for i in range(0, reward_arr_plot.shape[0]-test_window_size):
+    window_avg = np.sum(reward_arr_plot[i:i+test_window_size])/test_window_size
+    window_avg_values.append([i+int(test_window_size/2), window_avg])
+
+avg_vals = []
+kern = gkern(reward_window_plot)[0]
+
+
+# Pad with zeros so we plot our avg centered with the other plots
+for i in range(int(reward_window_plot/2 * dt)):
+    avg_vals.append(0)
+    
+
+for i in range(reward_window_plot,reward_arr_plot.shape[0], int(1/dt)):
+    avg = np.mean(reward_arr_plot[i-reward_window_plot:i] * exp_weighted_average)# np.mean(reward_arr_plot[i-window:i] * kern)
+    avg_vals.append(avg)
+
+# for i in range(int(reward_window/2 * dt)):
+#     avg_vals.insert(0,0)
+
+
+
+
+    
+# ax3.plot([i[0]*dt for i in window_avg_values], [i[1] for i in window_avg_values])
+
+# filtered = signal.sosfilt(sos,reward_arr_plot)
+# ax3.plot(avg_vals, label = [f"Gaussian Smoothed Reward, w={reward_window_plot}"])
+
+''' Newest reward rate estimation ''' 
+reward_estimation = [0]
+tau = 200
+for i in range(1, reward_arr_plot.shape[0]):
+        R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
+        reward_estimation.append(R_t)
+        
+ax3.plot(reward_arr_x, reward_estimation)
+'''
+t = 1:100; seq = sin(t);
+plot(t,seq)
+window_width = 90; 
+for window_bottom = 1:100-window_width+1
+    window_top = window_bottom + window_width - 1;
+    window_vals(window_bottom) = sum(seq(window_bottom:window_top))/window_width;
+end
+
+plot(round(window_bottom+window_width/2),window_vals,'k')
+x axis values for the plot need to be fixed
+
+'''
+
+# tau * dR/dt = r - R
+ 
 
                 

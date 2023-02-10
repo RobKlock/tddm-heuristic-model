@@ -524,24 +524,9 @@ def reproduce_sequence_(timer, events, reproduced_sequence_plot):
     # Plot reproduced sequence
     return 0
 
-# def expected_gain(target_time, current_time, short_length, long_length, short_prob, long_prob, reward_schedule):
-    
-#     g_-Ts = -.2 # incorrect short trial
-#     g_Ts = 1 # correct short trial
-#     g_-Tl = -.2 # incorrect long trial
-#     g_Tl = 1.2 # correct long trial
-    
-#     p-Ts = short_prob
-#     p-Tl = long_prob
-#     # w = 
-#     # dist = NormalDist(mu=target_time,  )
-    
-
-
 ''' Global variables '''
 dt = 0.1
 N_EVENT_TYPES= 10 # Number of event types (think, stimulus A, stimulus B, ...)
-# NUM_EVENTS=17#  Total amount of events
 Y_LIM=2 # Vertical plotting limit
 NOISE=0.0 # Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
@@ -554,40 +539,32 @@ ERROR_ANALYSIS_RESPONSES=[]
 BEAT_THE_CLOCK = False
 colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','BB','CC'] # For converting event types into letters 
-# ramp_graph=nx.Graph()
-SAVE_RAMP_NETWORK_ANIMATION_FRAMES = False
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 300
+NUM_RAMPS = 20
 RAMPS_PER_EVENT = 10
 reward_window_plot = 1600
 reward_window_sim = 1600
 x_lb = np.linspace(-reward_window_plot * dt,0, reward_window_plot)
 exp_weighted_average = np.exp(x_lb * .01)
-plt.plot(x_lb, exp_weighted_average)
+# plt.plot(x_lb, exp_weighted_average)
 event_data = []
 
-
 random_seq = False
+seq_length = 3
 
-# Begin simulation
+# Initialize events
 if random_seq:
-    
-    seq_length = 3
     random_samples = TM.getSamples(seq_length, num_normal = 3, seed = 12, scale_beg = 20, scale_end = 50)
     event_data = [[0,0,0]]
     for sample in random_samples:
         event_data.append([sample[0], sample[1], sample[2]])
         
-    # event_data = event_data + event_data[1:] + event_data[1:] + event_data[1:]
-    # event_data = np.asarray(event_data)
     HOUSE_LIGHT_ON = [*range(0,seq_length-1,1)] + [*range(seq_length,(seq_length*2)-1,1)] + [*range(seq_length*2,(seq_length*3)-3,1)] + [*range(seq_length*3,(seq_length*4)-3,1)]
-    
     event_data = TM.getEvents(num_samples=seq_length, num_normal = 2, deviation=2, num_exp = 0, repeat = 3, scale_beg = 20, scale_end=30)
     
 else:
     # TODO: Change this to arange
     HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(3,5,1)] + [*range(7,9,1)] + [*range(11,13,1)] + [*range(12,14,1)]
-    # HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(4,6,1)] + [*range(8,10,1)] 
     
     event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
                           [50,0,0], [25,1,1], [50,0,0], 
@@ -599,25 +576,7 @@ else:
                           [50,0,0], [25,1,1], [50,0,0],
                           [25,1,1], [50,0,0], [25,1,1],
                           [50,0,0], [25,1,1], [50,0,0],
-                          [25,1,1], [50,0,0], [25,1,1]])
-    
-    # HOUSE_LIGHT_ON = [*range(0,10,1)] + [*range(11,21,1)] #+ [*range(24,35,1)]
-    # event_data = np.asarray([[0,1,1], [50,0,0], [25,1,2],
-    #                       [50,0,3], [25,1,4], [50,0,5],
-    #                       [30,1,6], [60,0,7], [10,1,8],
-    #                       [100,0,9], [25,1,10], 
-                          
-    #                       [25,1,1], [50,0,0], [25,1,2], 
-    #                       [50,0,3], [25,1,4], [50,0,5],
-    #                       [30,1,6], [60,0,7], [10,1,8],
-    #                       [100,0,9], [25,1,10], 
-                          
-    #                       [25,1,1], [50,0,0], [25,1,2], 
-    #                       [50,0,3], [25,1,4], [50,0,5],
-    #                       [30,1,6], [60,0,7], [10,1,8],
-    #                       [100,0,9], [25,1,10], ])
-                          
-    
+                          [25,1,1], [50,0,0], [25,1,1]])                      
     
 # TODO: Make start threhsolds an array of values
 seq_len =  4
@@ -631,19 +590,19 @@ error_arr = np.zeros(NUM_EVENTS)
 event_data = relative_to_absolute_event_time(event_data)
 event_data[0][2] = event_data[seq_len][2]
 
-
 # Last event, time axis for plotting        
 T = event_data[HOUSE_LIGHT_ON[-1]+1][0] + 10
 
 # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
 timer=TM(1,NUM_RAMPS)
 
-
 simple_learning_fig = plt.figure()
 # simple_learning_fig.suptitle('Simple Learning Sequence', fontsize=16)
 ax1 = simple_learning_fig.add_subplot(311)
 ax2 = simple_learning_fig.add_subplot(312, sharex = ax1)
 ax3 = simple_learning_fig.add_subplot(313, sharex = ax1)
+# ax4 = simple_learning_fig.add_subplot(314)
+
 ax1.set_ylim([0,Y_LIM])
 ax1.set_xlim([0,T])
 
@@ -669,16 +628,9 @@ reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.
 hidden_states = [175, 325, 475]
 for hidden_state in hidden_states:
     reward_arr[hidden_state] = 2
-    # for i in range(1,20):
-        # reward_arr[hidden_state-i] = 1 - (i*.1)
-        # reward_arr[hidden_state-i] = timing_reward(i)
-    #    reward_arr[hidden_state-i] = 2
+    
 # For event, add a large amount of reward at the event and a little right before it 
 for event in event_data:
-    # reward_arr[event[0]] = 1
-    # for i in range(1,5):
-        # reward_arr[event[0]-i] = 1 - (i*.1)
-        # reward_arr[event[0]-i] = timing_reward(i)
     reward_arr[event[0] - 1] = 2
 
 reward_arr[0] = 0 
@@ -686,8 +638,11 @@ reward_arr[0] = 0
 ax2.plot(reward_x_axis, reward_arr, label="reward")
 for state in hidden_states:
     ax2.plot(state, .9, marker = '*', color='r', label="hidden state")
+    
 ''' Simulation Start '''
 # At each event e_i
+reward_est_vals = np.zeros(5250)
+
 for idx, event in enumerate(event_data[:-1]):    
     house_light = idx in HOUSE_LIGHT_ON
     event_time = event[0]
@@ -741,21 +696,30 @@ for idx, event in enumerate(event_data[:-1]):
                         START_THRESHOLD = change_response_threshold(START_THRESHOLD, RESPONSE_THRESHOLD_LEARNING_RATE, btc_reward, reward)
                         
                         btc_reward[idx]=reward
+                
                 if idx > 0:
                     responses = respond(house_light_responding_values, event_time, next_house_light_event_time, ax1, idx)
                     reward = reward_arr[responses]
                     pos_reward = np.where(reward > 0)[0]
-                
-                    # if pos_reward.shape[0] > 0:
-                    #     ax2.vlines(responses[pos_reward], reward[pos_reward])
-                    
-                    # print(reward) 
-                    # print(responses)
                     
                     for i,r in enumerate(reward):
                        if int(responses[i]/dt) < reward_arr_plot.shape[0]:
                            reward_arr_plot[int(responses[i]/dt)] = r - penalty
-                    
+             
+                    # if reward.size > 0:
+                    #     tau = 200
+                    #     print(next_house_light_event_time - event_time)
+                    #     # decay rate related to tau? 
+                    #     estimation = reward_est_vals[-1] * ((1/(2))**((next_house_light_event_time - event_time )*dt))
+                    #     print(reward_est_vals[-1] * ((1/(2))**((next_house_light_event_time - event_time )*dt)))
+                        
+                    #     live_reward_est = reward_est_vals[-1] + ((dt * (-reward_est_vals[-1]/tau) + max(reward)/tau))
+                    #     reward_est_vals.append(live_reward_est)
+                    #     print(live_reward_est)
+                    #     print()
+                        
+                    #     ax3.plot([event_time + ((next_house_light_event_time - event_time)/ 2 )], [live_reward_est], marker='o')
+                           
                     reward_penalty = np.full(reward.shape[0], penalty)
                     
                     reward_end = np.sum(reward) + np.sum(reward_penalty)
@@ -774,51 +738,22 @@ for idx, event in enumerate(event_data[:-1]):
                             
                         
                     ax1.plot(event_time+i,START_THRESHOLD, marker='.', color = 'g')
-                            
                     
-                        # np.mean(reward_arr_plot[i-window:i] * kern)
+                    tau = 200
+                    
+                
+                tau=200
+                print(f'event_time: {event_time}, next_time: {next_house_light_event_time}')
+                for i in range(int(event_time/dt)+1, int(next_house_light_event_time/dt)): # int(event_data[idx+1][0]/dt)):  #
+                    
+                    # if event_data[idx+1][0] == next_house_light_event_time:
+                    #     reward_est_vals[i] = reward_est_vals[i-1]
+                    # else:
+                    R_t = reward_est_vals[i-1] + ((dt * (-reward_est_vals[i-1]/tau) + reward_arr_plot[i]/tau))
+                    reward_est_vals[i] = R_t
+                    
                     
                 update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ax1, idx)
-                
-                # response_time = (event_time + next_house_light_event_time // 2) 
-                # reward = reward_arr[responses]
-                
-                '''
-                if reward.shape[0] > 0:
-                    penalty = np.full(reward.shape[0], penalty)
-                
-                    reward = np.subtract(reward,penalty)
-                '''
-                
-                # for index, r in enumerate(reward):
-                #     reward_arr_plot[int(event_time/dt) + int(index/dt)] = r
-                # reward_arr_plot.extend(reward)
-                
-                # pos_reward = np.where(reward > 0)[0]
-                
-                # # if pos_reward.shape[0] > 0:
-                # #     ax2.vlines(responses[pos_reward], reward[pos_reward])
-                
-                # # print(reward) 
-                # # print(responses)
-                
-                # for i,r in enumerate(reward):
-                #    if int(responses[i]/dt) < reward_arr_plot.shape[0]:
-                #        reward_arr_plot[int(responses[i]/dt)] = r - penalty
-                
-                # reward_penalty = np.full(reward.shape[0], penalty)
-                
-                # reward_end = np.sum(reward) + np.sum(reward_penalty)
-                # # print(reward_end)
-                # # print(reward_end)
-                
-                # # ax1.plot([response_time],[.8], marker='x', color = 'g')
-                # # in between responses an first interval, pad with zeros
-               
-                # # if responses
-                # # zeros_reward_arr = np.linspace(0, event_time, (responses[0]-event_time) / dt)
-                
-                # ax2.plot(responses,reward, marker='x', color = 'g')
                 
                 for value in house_light_hierarchical_value:
                     ax1.plot([next_house_light_event_time], [value], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
@@ -837,20 +772,20 @@ for idx, event in enumerate(event_data[:-1]):
                 house_light_idx+=1
             else:
                 house_light_interval=False
-  
-window_size = 100
-def gkern(l=window_size, sig=1.):
-    """\
-    creates gaussian kernel with side length `l` and a sigma of `sig`
-    """
-    ax = np.linspace(-(l - 1) / 2., (l - 1) / 2., l)
-    gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
-    
-    # gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
-    # kernel = np.outer(gauss, gauss)
-    return gauss # kernel / np.sum(kernel)
+    else:
+        print('hello')
+        print(f'event time {event_time}')
+        print(f'next house light: {event_data[idx+1][0]}')
+        
+        for i in range(int(event_time/dt), int(event_data[idx+1][0]/dt)):
+            if i > reward_est_vals.shape[0] - 1:
+                break
+            else:
+                R_t = reward_est_vals[i-1]
+                reward_est_vals[i:] = R_t
 
-kernel = gkern()
+window_size = 100
+
 
 threshold_times = []
 
@@ -863,18 +798,15 @@ ax1.set_xlabel("Time")
 # reward_sliding_windows = np.lib.stride_tricks.sliding_window_view(reward_arr_plot, window_size)
 
 reward_arr_x = np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), reward_arr_plot.shape[0])
-reward_sliding_windows_vals = np.zeros(reward_arr_plot.shape[0])
+# reward_sliding_windows_vals = np.zeros(reward_arr_plot.shape[0])
 
-for i in range(window_size):
-    reward_sliding_windows_vals[i] =  np.sum(reward_arr_plot[:i] * kernel[:i])
+# for i in range(window_size):
+#     reward_sliding_windows_vals[i] =  np.sum(reward_arr_plot[:i] * kernel[:i])
     
-    if i == 0:  
-        reward_sliding_windows_vals[-1] = np.sum(reward_arr_plot[-1:]) # * kernel[:1])
-    else:
-        reward_sliding_windows_vals[-i] = np.sum(reward_arr_plot[-i:]) # * kernel[:i])
-
-#for i in range(window_size, reward_arr_plot.shape[0] - window_size):
-    #reward_sliding_windows_vals[i] =  np.sum(reward_arr_plot[i:i+window_size]) #* kernel)
+#     if i == 0:  
+#         reward_sliding_windows_vals[-1] = np.sum(reward_arr_plot[-1:]) # * kernel[:1])
+#     else:
+#         reward_sliding_windows_vals[-i] = np.sum(reward_arr_plot[-i:]) # * kernel[:i])
 
 def smooth(y, box_pts):
     box = np.ones(box_pts)/box_pts
@@ -885,101 +817,17 @@ def moving_average(a, n=3) :
     ret = np.cumsum(a, dtype=float)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
-
-''' Various plotting for reward rate estimation ''' 
-
-# win_len = 20
-# for i in range(0, 5250-win_len):
-#     reward_arr_plot[i] = np.mean(reward_arr_plot[i:i+win_len])
-
-#for i in 
-# ax3.plot(reward_arr_x, smooth(reward_arr_plot, 40))
-# moving_average_reward = moving_average(reward_arr_plot, 8)
-moving_avg_1 = []
-moving_avg_2 = []
-moving_avg_3 = []
-
-
-window_l = 100
-window_r = 100
-ax1.plot([0,event_data[HOUSE_LIGHT_ON[-1]+1][0]], [START_THRESHOLD, START_THRESHOLD], color = 'green', alpha=.5)
-ax1.plot([0,event_data[HOUSE_LIGHT_ON[-1]+1][0]], [STOP_THRESHOLD, STOP_THRESHOLD], color = 'red', alpha=.5)
-
-for i in range(window_l,reward_arr_plot.shape[0]-window_r):
-    moving_avg_1.append(np.sum(reward_arr_plot[i-window_l:i+window_r])/window_r)
-    moving_avg_2.append(np.sum(reward_arr_plot[i-(window_l*2):i+(window_r*2)])/(window_r*2))
-    moving_avg_3.append(np.sum(reward_arr_plot[i-(window_l*4):i+(window_r*4)])/(window_r*4))
-    
-#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_1)), moving_avg_1)
-#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_2)), moving_avg_2)
-#ax3.plot(np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), len(moving_avg_3)), moving_avg_3)
-# ax3.plot(np.linspace(0,len(moving_avg_1)*dt, len(moving_avg_1)), moving_avg_1)
-
-test_window_size = 500
-window_avg_values=[]
-
-import scipy.stats as st
-def gkern(kernlen=20, nsig=3):
-    """Returns a 2D Gaussian kernel."""
-
-    x = np.linspace(-nsig, nsig, kernlen+1)
-    kern1d = np.diff(st.norm.cdf(x))
-    kern2d = np.outer(kern1d, kern1d)
-    return kern2d/kern2d.sum()
-
-
-for i in range(0, reward_arr_plot.shape[0]-test_window_size):
-    window_avg = np.sum(reward_arr_plot[i:i+test_window_size])/test_window_size
-    window_avg_values.append([i+int(test_window_size/2), window_avg])
-
-avg_vals = []
-kern = gkern(reward_window_plot)[0]
-
-
-# Pad with zeros so we plot our avg centered with the other plots
-for i in range(int(reward_window_plot/2 * dt)):
-    avg_vals.append(0)
-    
-
-for i in range(reward_window_plot,reward_arr_plot.shape[0], int(1/dt)):
-    avg = np.mean(reward_arr_plot[i-reward_window_plot:i] * exp_weighted_average)# np.mean(reward_arr_plot[i-window:i] * kern)
-    avg_vals.append(avg)
-
-# for i in range(int(reward_window/2 * dt)):
-#     avg_vals.insert(0,0)
-
-
-
-
-    
-# ax3.plot([i[0]*dt for i in window_avg_values], [i[1] for i in window_avg_values])
-
-# filtered = signal.sosfilt(sos,reward_arr_plot)
-# ax3.plot(avg_vals, label = [f"Gaussian Smoothed Reward, w={reward_window_plot}"])
-
+# ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
 ''' Newest reward rate estimation ''' 
 reward_estimation = [0]
 tau = 200
 for i in range(1, reward_arr_plot.shape[0]):
-        R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
-        reward_estimation.append(R_t)
+    R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
+    reward_estimation.append(R_t)
         
 ax3.plot(reward_arr_x, reward_estimation)
-'''
-t = 1:100; seq = sin(t);
-plot(t,seq)
-window_width = 90; 
-for window_bottom = 1:100-window_width+1
-    window_top = window_bottom + window_width - 1;
-    window_vals(window_bottom) = sum(seq(window_bottom:window_top))/window_width;
-end
 
-plot(round(window_bottom+window_width/2),window_vals,'k')
-x axis values for the plot need to be fixed
+ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
 
-'''
-
-# tau * dR/dt = r - R
- 
 
                 

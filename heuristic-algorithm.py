@@ -68,13 +68,15 @@ def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next
             assigned_ramps.append(timer_idx)
     '''       
     act = timer.timers[ramp_index] * interval_length
-    
+    print(f'ramp_index: {ramp_index}')
     for i in range (0, len(act)):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     f_act = act * act
     
-    for timer_act in act:
-        hier_act = timer_act + 1/((act.size)-1) * delta * f_act[act != timer_act].sum()
+    print(f'act: {act}')
+    
+    #for timer_act in act:
+    #    hier_act = timer_act + 1/((act.size)-1) * delta * f_act[act != timer_act].sum()
 
     return act
 
@@ -532,7 +534,7 @@ NOISE=0.0 # Internal noise - timer activation
 LEARNING_RATE=.8 # Default learning rate for timers
 STANDARD_INTERVAL=20 # Standard interval duration 
 K = 5 # Amount of timers that must be active to respond
-START_THRESHOLD=.5 # Response start threshold
+START_THRESHOLD=.7# Response start threshold
 STOP_THRESHOLD=1.2 # Response stop threshold
 PLOT_FREE_TIMERS=False
 ERROR_ANALYSIS_RESPONSES=[]
@@ -540,7 +542,7 @@ BEAT_THE_CLOCK = False
 colors = [[1,0,0], [0,1,0], [0,0,1], [1,1,0], [0,1,1], [1,0,1],[.46,.03,0], [.1,.3,.2], [.2,.7,.2], [.5,.3,.6], [.7,.3,.4]]# list(mcolors.CSS4_COLORS) # Color support for events
 ALPHABET_ARR = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','AA','BB','CC'] # For converting event types into letters 
 RESPONSE_THRESHOLD_LEARNING_RATE = .6
-NUM_RAMPS = 20
+NUM_RAMPS = 50
 RAMPS_PER_EVENT = 10
 reward_window_plot = 1600
 reward_window_sim = 1600
@@ -564,7 +566,7 @@ if random_seq:
     
 else:
     # TODO: Change this to arange
-    HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(3,5,1)] + [*range(7,9,1)] + [*range(11,13,1)] + [*range(12,14,1)]
+    HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(3,5,1)] + [*range(7,9,1)] + [*range(11,13,1)] #+ [*range(12,14,1)]
     
     event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
                           [50,0,0], [25,1,1], [50,0,0], 
@@ -627,11 +629,13 @@ reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.
 # Define hidden states
 hidden_states = [175, 325, 475]
 for hidden_state in hidden_states:
-    reward_arr[hidden_state] = 2
+    reward_arr[hidden_state] = 1
     
 # For event, add a large amount of reward at the event and a little right before it 
 for event in event_data:
-    reward_arr[event[0] - 1] = 2
+    reward_arr[event[0]] = 1
+    reward_arr[event[0]-10:event[0]] = .5
+    reward_arr[event[0]-20:event[0]-10] = .25
 
 reward_arr[0] = 0 
     
@@ -641,7 +645,7 @@ for state in hidden_states:
     
 ''' Simulation Start '''
 # At each event e_i
-reward_est_vals = np.zeros(5250)
+reward_est_vals = np.zeros(5000)
 
 for idx, event in enumerate(event_data[:-1]):    
     house_light = idx in HOUSE_LIGHT_ON

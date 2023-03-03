@@ -294,7 +294,7 @@ class TimerModule:
         break_type = num_samples+1
         
         state = np.random.randint(num_event_types) # current state
-        print(f'state: {state}')
+        # print(f'state: {state}')
         samples = np.empty([(num_samples * repeat) + (repeat-1),3]) # initialize array of samples 
         next_state = np.random.multinomial(1,distribution_weights[state,:])
         next_state = np.where(next_state==1)[0][0]
@@ -302,7 +302,7 @@ class TimerModule:
         samples[0] = [0,DIST_INDICES[state,next_state],state]
         first_state = state
         for i in range(num_samples):
-            print(f'state: {state}')
+            # print(f'state: {state}')
             next_state = np.random.multinomial(1,distribution_weights[state,:]) # get next state according to distribution weights
             next_state = np.where(next_state==1)[0][0] # index location of distribution
             # np.random.normal(locs[dist_index], scales[dist_index], 1)[0]

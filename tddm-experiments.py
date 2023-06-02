@@ -13,6 +13,9 @@ import random # TODO: Just use np.random instead of random.random
 # TODO: Specify the seed so random things are generated again
 
 from timer_module import TimerModule as TM
+import plotly.graph_objects as go
+import plotly.io as pio
+
 
 def relative_to_absolute_event_time(relative_time_events, NUM_EVENTS):
     # TODO: Change this to a simple cumsum on the first column
@@ -29,7 +32,7 @@ def activationAtIntervalEnd(timer, ramp_index, interval_length, c):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     return act
 
-def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next_stimulus_type, c, ax2):
+def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next_stimulus_type, c):
     # Simulate DDM process for activation amount
     # Change act to activation
     delta = 0.5
@@ -52,7 +55,7 @@ def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next
 
     return act
 
-def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, ax2, external_idx, NUM_RAMPS, RAMPS_PER_EVENT, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
+def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_type, stimulus_type, external_idx, allocation_prob, NUM_RAMPS, RAMPS_PER_EVENT, sequence_code = '', v0=1.0, z = 1, bias = 1, plot = False):
     # Frozen timers arent updated
     for idx, value in zip(timer_indices, timer_values):
         if idx in timer.frozen_ramps:
@@ -72,19 +75,17 @@ def update_and_reassign_ramps(timer, timer_values, timer_indices, next_stimulus_
         Pick N randomly and update them for the interval s1->s2=e_i
         """
         # If a timer is unassigned
-        if len(
-                np.where(
-                    timer.terminating_events[
-                        np.where(timer.initiating_events == stimulus_type)] == next_stimulus_type)[0])>RAMPS_PER_EVENT:
+        if len(np.where(timer.terminating_events[np.where(timer.initiating_events == stimulus_type)] == next_stimulus_type)[0])>RAMPS_PER_EVENT:
             continue
         
+        
         if timer.terminating_events[idx] == -1:
-            if flip >=.75: # Update this to be a var, not a magic number
+            if flip >=allocation_prob: # Update this to be a var, not a magic number
                 # if the timer has the appropriate terminating event, update the weight
                 if value > 1:
                     ''' Early Update Rule '''
                     timer_weight = earlyUpdateRule(value, timer.timerWeight(idx), timer.learningRate(idx))
-                    plt.grid('on')
+                   
                     
                 else:
                     ''' Late Update Rule '''
@@ -170,7 +171,7 @@ def generate_responses(interval_length, dt, num_samples):
     return responses
 
 
-def respond(timer_value, event_time, next_event, START_THRESHOLD, STOP_THRESHOLD, dt, num_samples, K, ax1, idx):
+def respond(timer_value, event_time, next_event, START_THRESHOLD, STOP_THRESHOLD, dt, num_samples, K, idx):
     # Given all ramp vaues, respond when K are between start and stop range
     # K is a global declared later on, tyically == 5
     
@@ -221,17 +222,17 @@ def respond(timer_value, event_time, next_event, START_THRESHOLD, STOP_THRESHOLD
         responses.extend([i for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
         
     
-    ax1.plot(responses, np.ones(len(responses)), 'x') 
     # responses and ax1.text(responses[0],1.2,str(idx))
     return responses
 
 
-def main(parameters):
+def main(parameters, plot=True):
     dt = parameters["dt"]
     N_EVENT_TYPES= parameters["N_EV_TYPES"] # Number of event types (think, stimulus A, stimulus B, ...)
     Y_LIM=2 # Vertical plotting limit
     NOISE=parameters["NOISE"] # Internal noise - timer activation
     LEARNING_RATE=parameters["lr"] # Default learning rate for timers
+    ALLOCATION_PROB = parameters["allocation_prob"]
     STANDARD_INTERVAL=20 # Standard interval duration 
     K = parameters["k"] # Amount of timers that must be active to respond
     START_THRESHOLD=parameters["start_thresh"]# Response start threshold
@@ -250,7 +251,10 @@ def main(parameters):
     exp_weighted_average = np.exp(x_lb * .01)
     # plt.plot(x_lb, exp_weighted_average)
     event_data = []
-
+    cur_RR = 0
+    old_RR = 0
+    expand = True 
+    contract = False
     random_seq = False
     seq_length = 3
 
@@ -283,7 +287,7 @@ def main(parameters):
     # TODO: Make start threhsolds an array of values
     seq_len =  4
     repeat_num = 3
-    penalty=.02
+    penalty=.1
 
     NUM_EVENTS = len(event_data) 
     btc_reward=np.empty(NUM_EVENTS)
@@ -297,24 +301,24 @@ def main(parameters):
 
     # Timer with 100 (or however many you want) ramps, all initialized to be very highly weighted (n=1)
     timer=TM(1,NUM_RAMPS)
-
-    simple_learning_fig = plt.figure()
-    # simple_learning_fig.suptitle('Simple Learning Sequence', fontsize=16)
-    ax1 = simple_learning_fig.add_subplot(311)
-    ax2 = simple_learning_fig.add_subplot(312, sharex = ax1)
-    ax3 = simple_learning_fig.add_subplot(313, sharex = ax1)
-    # ax4 = simple_learning_fig.add_subplot(314)
-
-    ax1.set_ylim([0,Y_LIM])
-    ax1.set_xlim([0,T])
-
-    ax2.set_ylim([0,1])
-    ax2.set_xlim([0,T])
-
-    # ax3.set_ylim([0,1])
-    ax3.set_xlim([0,T])
-
-    # ax2.plot()
+    if plot:
+        simple_learning_fig = plt.figure()
+        # simple_learning_fig.suptitle('Simple Learning Sequence', fontsize=16)
+        ax1 = simple_learning_fig.add_subplot(311)
+        ax2 = simple_learning_fig.add_subplot(312, sharex = ax1)
+        ax3 = simple_learning_fig.add_subplot(313, sharex = ax1)
+        # ax4 = simple_learning_fig.add_subplot(314)
+    
+        ax1.set_ylim([0,Y_LIM])
+        ax1.set_xlim([0,T])
+    
+        ax2.set_ylim([0,1])
+        ax2.set_xlim([0,T])
+    
+        # ax3.set_ylim([0,1])
+        ax3.set_xlim([0,T])
+    
+        # ax2.plot()
 
     reward_arr_plot = np.zeros(int(event_data[HOUSE_LIGHT_ON[-1]+1][0] / dt))
 
@@ -323,8 +327,8 @@ def main(parameters):
 
     # Initialize a reward arr that has a small amount of reward at each time step
     reward_arr = np.zeros(int(event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt))
-
-    reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.shape[0])
+    if plot:
+        reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.shape[0])
 
     # Define hidden states
     hidden_states = [175, 325, 475]
@@ -332,28 +336,37 @@ def main(parameters):
         reward_arr[int(hidden_state/dt)] = 1
         
     # For event, add a large amount of reward at the event and a little right before it 
-    for index, event in enumerate(event_data):
+    for index, event in enumerate(event_data[1:]):
         # print(f'index: {index}, event: {event}')
         if index in HOUSE_LIGHT_ON or (index-1) in HOUSE_LIGHT_ON:
             if int(event[0]/dt) < reward_arr.shape[0]:
+                
+                
                 # print(f'House Light: {index}, event: {event}')
                 reward_arr[int(event[0]/dt)] = 1
                 # print(f'Adding reward to indicies: {int((event[0] /dt)-30)}->{int(event[0]/dt)}')
                 # print(f'Adding reward to indicies: {int((event[0] /dt)-60)}->{int((event[0]/dt)-30)}')
-                reward_arr[int((event[0] /dt)-30):int(event[0]/dt)] = .5
-                reward_arr[int((event[0] /dt)-60):int((event[0]/dt)-30)] = .25
+                # reward_arr[int((event[0] /dt)-30):int(event[0]/dt)] = .5
+                # reward_arr[int((event[0] /dt)-60):int((event[0]/dt)-30)] = .25
+                exp_arr = np.exp(-.5 * np.arange(0, 20, dt))[::-1]
+                # print(f'exp_arr shape {exp_arr.shape}')
+                # print(f'reward_arr insert shape {reward_arr[int(event[0]/dt)-exp_arr.shape[0]:int(event[0]/dt)].shape}')
+                # print(f'reward arr test shape {reward_arr[10:20].shape}')
+                
+                reward_arr[int(event[0]/dt) - exp_arr.shape[0]:int(event[0]/dt)] = exp_arr
+
 
     reward_arr[0] = 0 
         
-
-    for state in hidden_states:
-        ax2.plot(state, .9, marker = '*', color='r', label="hidden state")
+    if plot:
+        for state in hidden_states:
+            ax2.plot(state, .9, marker = '*', color='r', label="hidden state")
         
     ''' Simulation Start '''
     # At each event e_i
     reward_est_vals = np.zeros(5000)
     run_twice = 2
-
+    reward_estimation = [0]
     for idx, event in enumerate(event_data[:-1]):    
         house_light = idx in HOUSE_LIGHT_ON
         event_time = event[0]
@@ -364,16 +377,18 @@ def main(parameters):
         
         # Plot event times and labels
         if idx < (NUM_EVENTS - 1):
-            ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
-            ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
+            if plot:
+                ax1.text(event[0],2.1,ALPHABET_ARR[int(event_data[idx+1][2])])
+                ax1.vlines(event_time, 0,Y_LIM, label="v", color=colors[next_stimulus_type])
         
         # else:
         #    ax1.text(event[0],2.1,'End')
                 
         if house_light:
             # Plot house light bar
-            house_light_bar = ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
-            ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
+            if plot:
+                house_light_bar = ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
+                ax1.plot([event_time, next_event], [1.9, 1.9], 'k-', lw=4)  
             # Look forward to all other intervals before house light turns off and start updating weights
             house_light_idx = idx + 1
             house_light_interval = True
@@ -392,10 +407,10 @@ def main(parameters):
                     active_ramp_indices = np.append(initiating_active_indices, timer.free_ramps)
                     
                     house_light_timer_value = activationAtIntervalEnd(timer, active_ramp_indices, next_house_light_event_time - event_time, NOISE)
-                    house_light_hierarchical_value = activationAtIntervalEndHierarchical(timer, initiating_active_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, ax1)
+                    house_light_hierarchical_value = activationAtIntervalEndHierarchical(timer, initiating_active_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE)
                     house_light_responding_values = activationAtIntervalEnd(timer, initiating_active_indices, next_house_light_event_time - event_time, NOISE)
                     
-                    active_timer_value = activationAtIntervalEndHierarchical(timer, active_ramp_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE, dt)
+                    active_timer_value = activationAtIntervalEndHierarchical(timer, active_ramp_indices, next_house_light_stimulus_type, next_house_light_event_time - event_time, NOISE)
                     
                     if BEAT_THE_CLOCK:
                         if not (event_time==0):
@@ -409,7 +424,10 @@ def main(parameters):
                             btc_reward[idx]=reward
                     
                     if idx > 0:
-                        responses = respond(house_light_responding_values, event_time, next_house_light_event_time, START_THRESHOLD, STOP_THRESHOLD, dt, seq_length, K, ax1, idx)
+                        responses = respond(house_light_responding_values, event_time, next_house_light_event_time, START_THRESHOLD, STOP_THRESHOLD, dt, seq_length, K, idx)
+                        if plot:
+                            ax1.plot(responses, np.ones(len(responses)), 'x')  
+                            
                         if run_twice>0 and len(responses) > 0:
                             # print(responses)
                             run_twice-=1
@@ -420,7 +438,57 @@ def main(parameters):
                         for i,r in enumerate(reward):
                            if int(responses[i]/dt) < reward_arr_plot.shape[0]:
                                reward_arr_plot[int(responses[i]/dt)] = r - penalty
-                 
+                               
+                        
+                        tau = 20
+                        for i in range(1, reward_arr_plot.shape[0]):
+                            R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
+                            reward_estimation.append(R_t)
+                        
+                        if idx == 1:
+                            old_RR = np.mean(reward_estimation[:-50])
+                        # hill-climbing for reward/responding boundaries
+                        if idx > 1:
+                           
+                            cur_RR = np.mean(reward_estimation[:-50])
+                            
+                            print(f'old: {old_RR}, cur: {cur_RR}')
+                            threshold_lr = 4000
+                            if cur_RR < old_RR and expand: # make this random
+                                # random (for now its just expand)
+                                expand= True
+                                contract = False
+                                START_THRESHOLD = START_THRESHOLD + (.1 * (cur_RR-old_RR))
+                                STOP_THRESHOLD = STOP_THRESHOLD - (0.1 * cur_RR-old_RR)
+                            
+                            if cur_RR > old_RR and expand: # doing better, expand boundaries
+                                print(START_THRESHOLD)
+                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                                expand = True
+                                
+                            if cur_RR > old_RR and contract: # doing better and contract, contrating boundaries
+                                print(START_THRESHOLD)
+                                contract=True
+                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                            if cur_RR < old_RR and expand: # doing worse, tighten boundaries
+                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                                contract = True
+                                print(START_THRESHOLD)
+                            
+                            if cur_RR < old_RR and contract: # doing worse, expand boundaries
+                                STOP_THRESHOLD = STOP_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                                START_THRESHOLD = START_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                                expand = True
+                                print(START_THRESHOLD)
+                                
+                            
+                            old_RR = cur_RR
+                        # ax1.plot([event_time], [START_THRESHOLD], marker='*', color='green')
+                        ax1.plot([event_time, next_house_light_event_time], [START_THRESHOLD, START_THRESHOLD], color='green')
+                        ax1.plot([event_time, next_house_light_event_time], [STOP_THRESHOLD, STOP_THRESHOLD], color='red')
                         # if reward.size > 0:
                         #     tau = 200
                         #     print(next_house_light_event_time - event_time)
@@ -435,27 +503,28 @@ def main(parameters):
                             
                         #     ax3.plot([event_time + ((next_house_light_event_time - event_time)/ 2 )], [live_reward_est], marker='o')
                                
-                        reward_penalty = np.full(reward.shape[0], penalty)
+                        # reward_penalty = np.full(reward.shape[0], penalty)
                         
-                        reward_end = np.sum(reward) + np.sum(reward_penalty)
+                        # reward_end = np.sum(reward) - np.sum(reward_penalty)
                         
-                        ax2.plot(responses,reward, marker='x', color = 'g')
+                        if plot:
+                            ax2.plot(responses,reward, marker='x', color = 'g')
                         
-                        # Look back and get exp moving average to get non-causal reward rate
-                        for t in range (int(reward_arr_plot[i]-reward_window_plot/dt), int(reward_arr_plot[i]/dt) ):
-                            exp_reward_rate = np.mean(reward_arr_plot[-reward_window_plot:] * exp_weighted_average)
-                            # Positiv reward, respond more
-                            if exp_reward_rate > 0:
-                                START_THRESHOLD -= 0.0001
+                        # # Look back and get exp moving average to get non-causal reward rate
+                        # for t in range (int(reward_arr_plot[i]-reward_window_plot/dt), int(reward_arr_plot[i]/dt) ):
+                        #     exp_reward_rate = np.mean(reward_arr_plot[-reward_window_plot:] * exp_weighted_average)
+                        #     # Positiv reward, respond more
+                        #     if exp_reward_rate > 0:
+                        #         START_THRESHOLD -= 0.0001
                             
-                            # Negative reward, respond less
-                            if exp_reward_rate < 0:
-                                START_THRESHOLD += 0.0001
+                        #     # Negative reward, respond less
+                        #     if exp_reward_rate < 0:
+                        #         START_THRESHOLD += 0.0001
                                 
-                            
-                        ax1.plot(event_time+i,START_THRESHOLD, marker='.', color = 'g')
+                        # if plot:   
+                        #     ax1.plot(event_time+i,START_THRESHOLD, marker='.', color = 'g')
                         
-                        tau = 200
+                        # tau = 200
                         
                     
                     tau=200
@@ -469,19 +538,21 @@ def main(parameters):
                         reward_est_vals[i] = R_t
                         
                         
-                    update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, ax1, idx, NUM_RAMPS, RAMPS_PER_EVENT)
-                    
-                    for value in house_light_hierarchical_value:
-                        ax1.plot([next_house_light_event_time], [value], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
+                    update_and_reassign_ramps(timer, house_light_timer_value, active_ramp_indices, next_house_light_stimulus_type, stimulus_type, idx, ALLOCATION_PROB, NUM_RAMPS, RAMPS_PER_EVENT)
+                    if plot:
+                        for value in house_light_hierarchical_value:
+                            ax1.plot([next_house_light_event_time], [value], marker='o',c=colors[next_stimulus_type], alpha=0.2) 
                     for i, val in zip(active_ramp_indices, house_light_timer_value):
                         if timer.terminating_events[i] == next_house_light_stimulus_type and timer.initiating_events[i] == stimulus_type or i in timer.free_ramps:
                             if i in timer.free_ramps:
-                                timer_plot_legend_free[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle='--', c=colors[next_stimulus_type])
+                                if plot:
+                                    timer_plot_legend_free[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val], linestyle='--', c=colors[next_stimulus_type])
                             
                             else:
                                 if (val<STOP_THRESHOLD and val>START_THRESHOLD):
-                                    timer_plot_legend_assigned[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type])
-                                    ax1.plot([next_house_light_event_time], [val], marker='o', c=colors[next_stimulus_type], markeredgecolor='black', markeredgewidth=1, alpha=0.2) 
+                                    if plot:
+                                        timer_plot_legend_assigned[stimulus_type] = ax1.plot([event_time,next_house_light_event_time], [0, val],   c=colors[next_stimulus_type])
+                                        ax1.plot([next_house_light_event_time], [val], marker='o', c=colors[next_stimulus_type], markeredgecolor='black', markeredgewidth=1, alpha=0.2) 
                                 
                                 
                     # Contiue to the next event in the house light interval
@@ -504,18 +575,18 @@ def main(parameters):
 
 
     threshold_times = []
-
-    ax1.set_ylim([0,Y_LIM])
-    ax1.set_xlim([0,400])
-    ax1.set_ylabel("Activation")
-    ax1.set_xlabel("Time")
+    if plot:
+        ax1.set_ylim([0,Y_LIM])
+        ax1.set_xlim([0,400])
+        ax1.set_ylabel("Activation")
+        ax1.set_xlabel("Time")
 
 
     # reward_sliding_windows = np.lib.stride_tricks.sliding_window_view(reward_arr_plot, window_size)
 
     reward_arr_x = np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), reward_arr_plot.shape[0])
-
-    ax2.plot(reward_arr_x, reward_arr, label="reward")
+    if plot:
+        ax2.plot(reward_arr_x, reward_arr, label="reward")
 
 
 
@@ -540,23 +611,27 @@ def main(parameters):
         return ret[n - 1:] / n
     # ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
     ''' Newest reward rate estimation ''' 
+    
     reward_estimation = [0]
     tau = 200
     for i in range(1, reward_arr_plot.shape[0]):
         R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
         reward_estimation.append(R_t)
-            
-    ax3.plot(reward_arr_x, reward_estimation)
-    ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
+    if plot:  
+        ax3.plot(reward_arr_x, reward_estimation)
+        ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
+    
     average_reward = np.mean(reward_est_vals)
-    print(f"Average Reward: {average_reward}")
+    
+    # print(f"Average Reward: {average_reward}")
     return average_reward
 
+    
 params = {"dt":0.1,
               "N_EV_TYPES":10,
               "NOISE":0,
               "lr": 0.8,
-              "k":5,
+              "k":3,
               "start_thresh":.7,
               "stop_thresh":1.2,
               "num_ramps":100,
@@ -564,17 +639,102 @@ params = {"dt":0.1,
               }
 
 reward_from_runs = []
-num_repeat=3
-for i in np.arange(.5,1,.1):
-    trial_runs = []
-    for repeat in range(num_repeat):
-        params["start_thresh"] = i
-        avg_reward = main(params)
-        trial_runs.append(avg_reward)
-    reward_from_runs.append(np.mean(np.array(trial_runs)))
+num_repeat=1
+# for i in np.arange(.5,.6,.1):
+#     trial_runs = []
+#     for repeat in range(num_repeat):
+#         params["start_thresh"] = i
+#         avg_reward = main(params)
+#         trial_runs.append(avg_reward)
+#     reward_from_runs.append(np.mean(np.array(trial_runs)))
 
-plt.figure()
-plt.plot(reward_from_runs)
-plt.ylabel("average reward")
-plt.xlabel("Run #")
+# plt.figure()
+# plt.plot(reward_from_runs)
+# plt.ylabel("average reward")
+# plt.xlabel("Run #")
+
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D  
+# Axes3D import has side effects, it enables using projection='3d' in add_subplot
+import matplotlib.pyplot as plt
+import random
+
+def fun(x, y):
+    
+    total_runs = (x.shape[0])
+    curr_run = 0
+    rewards = []
+    for idx, start in enumerate(x): 
+        # for end in y:
+        params = {"dt":0.1,
+                      "N_EV_TYPES":3,
+                      "NOISE":0,
+                      "lr": 0.8,
+                      "k":4,
+                      "start_thresh":start,
+                      "stop_thresh":y[idx],
+                      "num_ramps":60,
+                      "ramps_per_event":5,
+                      "allocation_prob":.3
+                      }
+        avg_reward = main(params, plot=False)
+        curr_run += 1 
+        if curr_run%10 == 0:
+            print(f'Percent Complete: {(curr_run/total_runs) * 100}')
+        rewards.append(avg_reward)
+            
+    return rewards
+
+# ''' Gather Surface Data ''' 
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# x = np.arange(.7,1.1,.1) # k
+# # y =  np.arange(3, 2.4, 0.05) # num event type
+# y = np.arange(.7,1.1,.1) # Ramps Per
+# # k = np.arange(1,8,1)
+# # ramps_per = np.arange(1,12,1)
+
+params = {"dt":0.1,
+              "N_EV_TYPES":3,
+              "NOISE":0,
+              "lr": 0.8,
+              "k":2,
+              "start_thresh":.8,
+              "stop_thresh":1.1,
+              "num_ramps":60,
+              "ramps_per_event":1,
+              "allocation_prob":.9
+              }
+
+main(params, plot=True)
+# X, Y = np.meshgrid(x, y)
+
+# zs = np.array(fun(np.ravel(X), np.ravel(Y)))
+# Z = zs.reshape(X.shape)
+
+# np.savetxt("reward-surface-Z-test-smooth.csv", Z, delimiter=",")
+# np.savetxt("reward-surface-X-test-smooth.csv", X, delimiter=",")
+# np.savetxt("reward-surface-Y-test-smooth.csv", Y, delimiter=",")
+
+# pio.renderers.default='browser'
+
+# fig = go.Figure(data=[go.Mesh3d(x=np.ravel(X), y=np.ravel(Y), z=np.ravel(Z), intensity=np.ravel(Z), colorscale='Viridis')])
+# fig.show()
+
+
+# # ''' Alternatively, load surface data ''' 
+# # Z = np.loadtxt("reward-surface-Z-rampNum-eventNum.csv", delimiter=",", dtype=float)
+# # X = np.loadtxt("reward-surface-X-rampNum-eventNum.csv", delimiter=",", dtype=float)
+# # Y = np.loadtxt("reward-surface-Y-rampNum-eventNum.csv", delimiter=",", dtype=float)
+
+# ax.plot_surface(X, Y, Z, cmap='hot')
+# ax.set_title('Reward Surface')
+# ax.set_xlabel('k')
+# ax.set_ylabel('num Ramps')
+# ax.set_zlabel('num ')
+# plt.show()
+
+
+
+
  

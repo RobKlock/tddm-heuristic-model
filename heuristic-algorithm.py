@@ -68,12 +68,12 @@ def activationAtIntervalEndHierarchical(timer, ramp_index, interval_length, next
             assigned_ramps.append(timer_idx)
     '''       
     act = timer.timers[ramp_index] * interval_length
-    print(f'ramp_index: {ramp_index}')
+    # print(f'ramp_index: {ramp_index}')
     for i in range (0, len(act)):
         act[i] = act[i] + c * np.sqrt(act[i]) * np.random.normal(0, 1) * math.sqrt(interval_length)
     f_act = act * act
     
-    print(f'act: {act}')
+    # print(f'act: {act}')
     
     #for timer_act in act:
     #    hier_act = timer_act + 1/((act.size)-1) * delta * f_act[act != timer_act].sum()
@@ -293,14 +293,15 @@ def respond(timer_value, event_time, next_event, ax1, idx):
             response_period_end = time[0]
             response_periods.append([response_period_start, response_period_end])
         k_o+=time[1]
+    
     r = list(generate_responses(next_event-event_time))
     r.insert(0, event_time)
     r=list(np.cumsum(r))
     # print('===')
     # print(f'{event_time} / {next_event}')
     for response_period in response_periods:
-        responses.extend([int(i) for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
-        # print(r)
+        responses.extend([i for i in r if (i>response_period[0] and i<response_period[1] and i<next_event and i>event_time)])
+        
     
     ax1.plot(responses, np.ones(len(responses)), 'x') 
     # responses and ax1.text(responses[0],1.2,str(idx))
@@ -614,7 +615,7 @@ ax2.set_xlim([0,T])
 # ax3.set_ylim([0,1])
 ax3.set_xlim([0,T])
 
-ax2.plot()
+# ax2.plot()
 
 reward_arr_plot = np.zeros(int(event_data[HOUSE_LIGHT_ON[-1]+1][0] / dt))
 
@@ -629,23 +630,30 @@ reward_x_axis = np.linspace(0,event_data[HOUSE_LIGHT_ON[-1]+1][0]/dt,reward_arr.
 # Define hidden states
 hidden_states = [175, 325, 475]
 for hidden_state in hidden_states:
-    reward_arr[hidden_state] = 1
+    reward_arr[int(hidden_state/dt)] = 1
     
 # For event, add a large amount of reward at the event and a little right before it 
-for event in event_data:
-    reward_arr[event[0]] = 1
-    reward_arr[event[0]-10:event[0]] = .5
-    reward_arr[event[0]-20:event[0]-10] = .25
+for index, event in enumerate(event_data):
+    # print(f'index: {index}, event: {event}')
+    if index in HOUSE_LIGHT_ON or (index-1) in HOUSE_LIGHT_ON:
+        if int(event[0]/dt) < reward_arr.shape[0]:
+            # print(f'House Light: {index}, event: {event}')
+            reward_arr[int(event[0]/dt)] = 1
+            # print(f'Adding reward to indicies: {int((event[0] /dt)-30)}->{int(event[0]/dt)}')
+            # print(f'Adding reward to indicies: {int((event[0] /dt)-60)}->{int((event[0]/dt)-30)}')
+            reward_arr[int((event[0] /dt)-30):int(event[0]/dt)] = .5
+            reward_arr[int((event[0] /dt)-60):int((event[0]/dt)-30)] = .25
 
 reward_arr[0] = 0 
     
-ax2.plot(reward_x_axis, reward_arr, label="reward")
+
 for state in hidden_states:
     ax2.plot(state, .9, marker = '*', color='r', label="hidden state")
     
 ''' Simulation Start '''
 # At each event e_i
 reward_est_vals = np.zeros(5000)
+run_twice = 2
 
 for idx, event in enumerate(event_data[:-1]):    
     house_light = idx in HOUSE_LIGHT_ON
@@ -703,7 +711,11 @@ for idx, event in enumerate(event_data[:-1]):
                 
                 if idx > 0:
                     responses = respond(house_light_responding_values, event_time, next_house_light_event_time, ax1, idx)
-                    reward = reward_arr[responses]
+                    if run_twice>0 and len(responses) > 0:
+                        # print(responses)
+                        run_twice-=1
+                        
+                    reward = reward_arr[[int(r/dt) for r in responses]]
                     pos_reward = np.where(reward > 0)[0]
                     
                     for i,r in enumerate(reward):
@@ -727,6 +739,7 @@ for idx, event in enumerate(event_data[:-1]):
                     reward_penalty = np.full(reward.shape[0], penalty)
                     
                     reward_end = np.sum(reward) + np.sum(reward_penalty)
+                    
                     ax2.plot(responses,reward, marker='x', color = 'g')
                     
                     # Look back and get exp moving average to get non-causal reward rate
@@ -747,7 +760,7 @@ for idx, event in enumerate(event_data[:-1]):
                     
                 
                 tau=200
-                print(f'event_time: {event_time}, next_time: {next_house_light_event_time}')
+                # print(f'event_time: {event_time}, next_time: {next_house_light_event_time}')
                 for i in range(int(event_time/dt)+1, int(next_house_light_event_time/dt)): # int(event_data[idx+1][0]/dt)):  #
                     
                     # if event_data[idx+1][0] == next_house_light_event_time:
@@ -777,9 +790,9 @@ for idx, event in enumerate(event_data[:-1]):
             else:
                 house_light_interval=False
     else:
-        print('hello')
-        print(f'event time {event_time}')
-        print(f'next house light: {event_data[idx+1][0]}')
+        # print('hello')
+        # print(f'event time {event_time}')
+        # print(f'next house light: {event_data[idx+1][0]}')
         
         for i in range(int(event_time/dt), int(event_data[idx+1][0]/dt)):
             if i > reward_est_vals.shape[0] - 1:
@@ -802,6 +815,11 @@ ax1.set_xlabel("Time")
 # reward_sliding_windows = np.lib.stride_tricks.sliding_window_view(reward_arr_plot, window_size)
 
 reward_arr_x = np.linspace(0,int(event_data[HOUSE_LIGHT_ON[-1]+1][0]), reward_arr_plot.shape[0])
+
+ax2.plot(reward_arr_x, reward_arr, label="reward")
+
+
+
 # reward_sliding_windows_vals = np.zeros(reward_arr_plot.shape[0])
 
 # for i in range(window_size):
@@ -830,8 +848,9 @@ for i in range(1, reward_arr_plot.shape[0]):
     reward_estimation.append(R_t)
         
 ax3.plot(reward_arr_x, reward_estimation)
-
 ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
+average_reward = np.mean(reward_est_vals)
+print(f"Average Reward: {average_reward}")
 
 
                 

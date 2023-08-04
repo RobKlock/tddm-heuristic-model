@@ -8,6 +8,7 @@ Hill climbing test
 import numpy as np
 import matplotlib.pyplot as plt
 import random
+import math
 
 def hillClimbingTest(num_climbers, num_steps, randomness, step_size):
     # Generate Reward Hills
@@ -47,126 +48,106 @@ def hillClimbingTest(num_climbers, num_steps, randomness, step_size):
         x = 5
         for i in range(num_steps):
             # Perform gradient ascent step
-            x += learning_rate * df(x)
+            
+            # use position derivative and reward derivative
+            if i<2:
+                df_p = 0
+            else:
+                df_p = (xs[-1] - xs[-2]) / step_size 
+            
+            x += learning_rate * df(x,step_size) * df_p
+            
+            x += np.random.normal(0, step_size) # 1/f(x) *  1/df(x,step_size))
             
             # Randomly add a bit of noise to the position
-            if random.random() < randomness:
-                x += random.uniform(-1, 1)
+            # if random.random() < randomness:
+            
             xs.append(x)
-            # Print progress every 100 steps
-            if i % 100 == 0:
-                print(f"Step {i}: x={x}, f(x)={f(x)}")
-        plt.plot(xs, np.linspace(np.min(reward),np.max(reward),num_steps), label='random walk', alpha=0.3)
-   
-            #     if old_reward==cur_reward:
-        #         print('equal')
-        #         # take a random step
-        #         roll = np.random.rand()
-        #         if roll >= .5:
-        #             cur_pos = cur_pos+np.random.randint(5)
-        #             climber_search[step] = cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-        #         else:
-        #             cur_pos = cur_pos-np.random.randint(5)
-        #             climber_search[step] = cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-                
             
-            
-        #     # we made the wrong step, go back
-        #     elif old_reward>cur_reward:
-                
-        #         if old_pos > cur_pos:
-        #             cur_pos=cur_pos+np.random.randint(3)
-        #             climber_search[step] = cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-                    
-        #         elif old_pos == cur_pos:
-        #             print('e')
-        #             if np.random.rand() >= .5:
-        #                 cur_pos = cur_pos+np.random.randint(3)
-        #                 climber_search[step] = cur_pos
-        #                 climber_reward[step] = reward[cur_pos]
-        #             else:
-        #                 cur_pos = cur_pos-np.random.randint(3)
-        #                 climber_search[step] = cur_pos
-        #                 climber_reward[step] = reward[cur_pos]
-        #         else:
-        #             cur_pos=cur_pos-np.random.randint(3)
-        #             climber_search[step] = cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-                
-            
-        #     else:
-        #         print('l')
-        #         if old_pos>cur_pos:
-        #             print("o")
-        #             cur_pos=cur_pos+np.random.randint(3)
-        #             climber_search[step]=cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-               
-        #         elif old_pos == cur_pos:
-        #             print('e')
-        #             if np.random.rand() >= .5:
-        #                 cur_pos = cur_pos+np.random.randint(3)
-        #                 climber_search[step] = cur_pos
-        #                 climber_reward[step] = reward[cur_pos]
-        #             else:
-        #                 cur_pos = cur_pos-np.random.randint(3)
-        #                 climber_search[step] = cur_pos
-        #                 climber_reward[step] = reward[cur_pos]
-        #         else:
-        #             print("h")
-        #             cur_pos=cur_pos-np.random.randint(3)
-        #             climber_search[step]=cur_pos
-        #             climber_reward[step] = reward[cur_pos]
-                
-            
-        # plt.plot(climber_search, np.linspace(np.min(reward),np.max(reward),num_steps), label='random walk', alpha=0.3)
-       #  plt.show()
-                    
         
+        plt.plot(xs, np.linspace(np.min(reward),np.max(reward),num_steps), label='random walk', alpha=0.3)
+ 
+def simulated_annealing(initial_solution, initial_temperature, cooling_rate, max_iterations, step_size, num_climbers):
+    '''
+    initial solution: random, or initated to something consistent
+    initial temperature: 1-100
+    cooling rate: determines how fast temperature decreases. 0.8-0.99
+    max_iterations: max iterations
+    step_size: dt
+    '''
     
-   # 
+    # current_solution = initial_solution
+    # init_cs = current_solution
+    # best_solution = current_solution
+    # init_bs = best_solution
+    # current_temperature = initial_temperature
+    # init_ct = current_temperature
     
-def test():
-        # Define the reward surface function
-    def f(x):
-        return np.sin(x) + x
-    
-    # Numerically estimate the derivative of f
-    def df(x, h=0.0001):
-        return (f(x + h) - f(x)) / h
-    
-    # Parameters for the gradient ascent
-    x = 5
-    
-    learning_rate = 0.01
-    epochs = 1000
-    randomness = 0.1
-    
-    x_space = np.linspace(-20, 20, 1000)
-    
-    # Calculate the y values
-    reward = (3 * np.sin(x_space)) + x_space
-    # Plot the function
+    x = np.linspace(-20, 20, int(100/step_size))
+    reward = (3 * np.sin(x)) + x
+    x_space = np.linspace(-20, 20, int(max_iterations/step_size))
     plt.figure(figsize=(10, 6))
     plt.plot(x_space, reward)
-    for k in range(10):
+    
+    current_solution = initial_solution
+    best_solution = current_solution
+    current_sol_init = current_solution
+    
+    current_temperature = initial_temperature
+    current_temp_init = current_temperature
+    for climber in range(num_climbers):
         xs=[]
-        x = 5
-        for i in range(epochs):
-            # Perform gradient ascent step
-            x += learning_rate * df(x)
+        
+        # perturb parameters
+        # initial_temperature -= climber * .05
+        current_solution = current_sol_init
+        best_solution = current_solution
+        current_temperature = current_temp_init
+        for iteration in range(max_iterations):
+         
+            # Generate a new candidate solution by perturbing the current solution
+            candidate_solution = perturb_solution(current_solution,step_size)
             
-            # Randomly add a bit of noise to the position
-            if random.random() < randomness:
-                x += random.uniform(-1, 1)
-            xs.append(x)
-            # Print progress every 100 steps
-            if i % 100 == 0:
-                print(f"Step {i}: x={x}, f(x)={f(x)}")
-        plt.plot(xs, np.linspace(np.min(reward),np.max(reward),epochs), label='random walk', alpha=0.3)
+            # Calculate the differences in the objective function (reward) between the current and candidate solutions
+            current_reward = calculate_reward(current_solution)
+            candidate_reward = calculate_reward(candidate_solution)
+            reward_difference = candidate_reward - current_reward
+    
+            # Decide whether to accept the candidate solution
+            if reward_difference > 0:
+                current_solution = candidate_solution
+            else:
+                acceptance_probability = math.exp(reward_difference / current_temperature)
+                if random.random() < acceptance_probability:
+                    current_solution = candidate_solution
+    
+            # Update the best solution if necessary
+            if calculate_reward(current_solution) > calculate_reward(best_solution):
+                best_solution = current_solution
+    
+            # Decrease the temperature
+            current_temperature *= cooling_rate
+            
+            xs.append(best_solution)
+        
+        
+        plt.plot(xs, np.linspace(np.min(reward),np.max(reward),max_iterations), label='simulated annealing', alpha=0.3)
+        
+    return best_solution
 
-hillClimbingTest(4,1000,.04,.02)
+# Function for perturbing the current solution (customize this according to your problem)
+def perturb_solution(solution,step_size):
+    # Perform some perturbation to generate a new candidate solution
+    # Modify the solution based on your problem's requirements
+    return solution + np.random.normal(0, step_size) # 1/f(x) *  1/df(x,step_size))
+
+# Function for calculating the reward (customize this according to your problem)
+def calculate_reward(solution):
+    # Calculate the reward for the given solution
+    # Modify the calculation based on your problem's requirements
+    return (3 * np.sin(solution)) + solution
+
+
+simulated_annealing(4.5, 200, 0.01, 100, .2,4)
+# hillClimbingTest(4,1000,.04,.02)
 # test()

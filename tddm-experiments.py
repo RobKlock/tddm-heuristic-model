@@ -270,7 +270,21 @@ def main(parameters, plot=True):
         
     else:
         # TODO: Change this to arange
-        HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(3,5,1)] + [*range(7,9,1)] + [*range(11,13,1)] #+ [*range(12,14,1)]
+        # HOUSE_LIGHT_ON = [*range(0,2,1)] + [*range(3,5,1)] + [*range(7,9,1)] + [*range(11,13,1)] #+ [*range(12,14,1)]
+        
+        # event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
+        #                       [50,0,0], [25,1,1], [50,0,0], 
+        #                       [25,1,1], [50,0,0], [25,1,1], 
+        #                       [50,0,0], [25,1,1], [50,0,0], 
+        #                       [25,1,1], [50,0,0], [25,1,1], 
+        #                       [50,0,0], [25,1,1], [50,0,0],
+        #                       [25,1,1], [50,0,0], [25,1,1],
+        #                       [50,0,0], [25,1,1], [50,0,0],
+        #                       [25,1,1], [50,0,0], [25,1,1],
+        #                       [50,0,0], [25,1,1], [50,0,0],
+        #                       [25,1,1], [50,0,0], [25,1,1]])
+        
+        HOUSE_LIGHT_ON = [*range(0,1,1)] + [*range(2,3,1)] + [*range(4,5,1)] + [*range(6,7,1)] +  [*range(9,10,1)] + [*range(11,12,1)] + [*range(13,14,1)]
         
         event_data = np.asarray([[0,1,1], [50,0,0], [25,1,1],
                               [50,0,0], [25,1,1], [50,0,0], 
@@ -282,7 +296,7 @@ def main(parameters, plot=True):
                               [50,0,0], [25,1,1], [50,0,0],
                               [25,1,1], [50,0,0], [25,1,1],
                               [50,0,0], [25,1,1], [50,0,0],
-                              [25,1,1], [50,0,0], [25,1,1]])                      
+                              [25,1,1], [50,0,0], [25,1,1]])                        
         
     # TODO: Make start threhsolds an array of values
     seq_len =  4
@@ -364,7 +378,7 @@ def main(parameters, plot=True):
         
     ''' Simulation Start '''
     # At each event e_i
-    reward_est_vals = np.zeros(5000)
+    reward_est_vals = np.zeros(5250)
     run_twice = 2
     reward_estimation = [0]
     for idx, event in enumerate(event_data[:-1]):    
@@ -447,42 +461,50 @@ def main(parameters, plot=True):
                         
                         if idx == 1:
                             old_RR = np.mean(reward_estimation[:-50])
+                        
+                        
                         # hill-climbing for reward/responding boundaries
                         if idx > 1:
                            
                             cur_RR = np.mean(reward_estimation[:-50])
                             
-                            print(f'old: {old_RR}, cur: {cur_RR}')
-                            threshold_lr = 4000
-                            if cur_RR < old_RR and expand: # make this random
-                                # random (for now its just expand)
-                                expand= True
-                                contract = False
-                                START_THRESHOLD = START_THRESHOLD + (.1 * (cur_RR-old_RR))
-                                STOP_THRESHOLD = STOP_THRESHOLD - (0.1 * cur_RR-old_RR)
+                            STOP_THRESHOLD += .2 * ((cur_RR-old_RR)/dt) # expand
+                            START_THRESHOLD -= .2 * ((cur_RR-old_RR)/dt) # contract
                             
-                            if cur_RR > old_RR and expand: # doing better, expand boundaries
-                                print(START_THRESHOLD)
-                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
-                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
-                                expand = True
+                            if random.random() < .5: # randomness param
+                                STOP_THRESHOLD += .2 * random.uniform(-1,1)
+                                START_THRESHOLD -= .2 * random.uniform(-1,1)
+                            # print(f'old: {old_RR}, cur: {cur_RR}')
+                            # threshold_lr = 4000
+                            # if cur_RR < old_RR and expand: # make this random
+                            #     # random (for now its just expand)
+                            #     expand= True
+                            #     contract = False
+                            #     START_THRESHOLD = START_THRESHOLD + (.1 * (cur_RR-old_RR))
+                            #     STOP_THRESHOLD = STOP_THRESHOLD - (0.1 * cur_RR-old_RR)
+                            
+                            # if cur_RR > old_RR and expand: # doing better, expand boundaries
+                            #     print(START_THRESHOLD)
+                            #     START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                            #     STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                            #     expand = True
                                 
-                            if cur_RR > old_RR and contract: # doing better and contract, contrating boundaries
-                                print(START_THRESHOLD)
-                                contract=True
-                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
-                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
-                            if cur_RR < old_RR and expand: # doing worse, tighten boundaries
-                                START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
-                                STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
-                                contract = True
-                                print(START_THRESHOLD)
+                            # if cur_RR > old_RR and contract: # doing better and contract, contrating boundaries
+                            #     print(START_THRESHOLD)
+                            #     contract=True
+                            #     START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                            #     STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                            # if cur_RR < old_RR and expand: # doing worse, tighten boundaries
+                            #     START_THRESHOLD = START_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                            #     STOP_THRESHOLD = STOP_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                            #     contract = True
+                            #     print(START_THRESHOLD)
                             
-                            if cur_RR < old_RR and contract: # doing worse, expand boundaries
-                                STOP_THRESHOLD = STOP_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
-                                START_THRESHOLD = START_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
-                                expand = True
-                                print(START_THRESHOLD)
+                            # if cur_RR < old_RR and contract: # doing worse, expand boundaries
+                            #     STOP_THRESHOLD = STOP_THRESHOLD - (threshold_lr * (cur_RR-old_RR))
+                            #     START_THRESHOLD = START_THRESHOLD + (threshold_lr * (cur_RR-old_RR))
+                            #     expand = True
+                            #     print(START_THRESHOLD)
                                 
                             
                             old_RR = cur_RR
@@ -618,7 +640,7 @@ def main(parameters, plot=True):
         R_t = reward_estimation[i-1] + ((dt * (-reward_estimation[i-1]/tau) + reward_arr_plot[i]/tau))
         reward_estimation.append(R_t)
     if plot:  
-        ax3.plot(reward_arr_x, reward_estimation)
+        # ax3.plot(reward_arr_x, reward_estimation)
         ax3.plot(reward_arr_x, reward_est_vals, linestyle='--')
     
     average_reward = np.mean(reward_est_vals)
@@ -653,11 +675,8 @@ num_repeat=1
 # plt.ylabel("average reward")
 # plt.xlabel("Run #")
 
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D  
+
 # Axes3D import has side effects, it enables using projection='3d' in add_subplot
-import matplotlib.pyplot as plt
-import random
 
 def fun(x, y):
     
@@ -734,7 +753,40 @@ main(params, plot=True)
 # ax.set_zlabel('num ')
 # plt.show()
 
-
+'''
+START_THRESHOLD=parameters["start_thresh"]# Response start threshold
+    STOP_THRESHOLD=parameters["stop_thresh"] # Response stop threshold
+    c = 0.1 # noise for iteration, separate from internal neural noise
+    baseline_noise = 0.5
+    noise_scale = 1
+    scale = 100
+    reward_vals = [0]
+    R_est = R_delay = 1.0
+    R_est_vals = [R_est]
+    R_delay_vals = [R_delay]
+    
+    start_est = start_delay = START_THRESHOLD
+    stop_est = stop_delay = STOP_THRESHOLD
+    
+    start_est_vals = []
+    start_delay_vals = []
+    
+    stop_est_vals = []
+    stop_delay_vals = []
+    
+    R_hat_dot_delay = 0
+    R_hat_dot_dot_delay = 0
+    R_hat_dot_delay_vals = []
+    start_hat_dot_vals = []
+    stop_hat_dot_vals = []
+    R_hat_dot_vals = []
+    R_hat_dot_dot_vals = []
+    noise_vals = [baseline_noise]
+    
+    path = [(START_THRESHOLD, STOP_THRESHOLD)]
+    tau_iteration = 10
+    
+    '''
 
 
  
